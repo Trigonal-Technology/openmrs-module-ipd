@@ -17,9 +17,9 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "ipd_slot")
 public class Slot extends BaseChangeableOpenmrsData {
-	
+
 	private static final long serialVersionUID = 1L;
-	
+
 	public enum SlotStatus {
 		SCHEDULED,
 		NOT_DONE,
@@ -27,27 +27,27 @@ public class Slot extends BaseChangeableOpenmrsData {
 		STOPPED,
 		MISSED
 	}
-	
+
 	@EqualsAndHashCode.Include
 	@Id
-	@GeneratedValue(strategy = GenerationType.AUTO)
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	@Column(name = "slot_id")
 	private Integer id;
-	
+
 	/**
 	 * The location Where schedule occurs
 	 */
 	@ManyToOne
 	@JoinColumn(name = "location_id", referencedColumnName = "location_id")
 	private Location location; // bed location for patient
-	
+
 	/**
 	 * The Service Type of the Schedule
 	 */
 	@OneToOne
 	@JoinColumn(name = "service_type_id", referencedColumnName = "concept_id", nullable = false)
 	private Concept serviceType; // as per schedule service type
-	
+
 	/**
 	 * The entity that belongs to a Schedule
 	 */
@@ -61,7 +61,7 @@ public class Slot extends BaseChangeableOpenmrsData {
 	@OneToOne
 	@JoinColumn(name = "order_id", referencedColumnName = "order_id")
 	private Order order;
-	
+
 	/**
 	 * The Start Date the Slot
 	 */
@@ -92,8 +92,6 @@ public class Slot extends BaseChangeableOpenmrsData {
 	private String notes;
 
 	public Boolean isStopped() {
-		return this.status !=null && this.status == SlotStatus.STOPPED;
+		return this.status != null && this.status == SlotStatus.STOPPED;
 	}
 }
-
-

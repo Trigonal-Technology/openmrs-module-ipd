@@ -36,6 +36,21 @@
 			</plugins>
 		</pluginManagement>
 		<plugins>
+			<!-- Lombok annotationProcessorPath required on JDK 21 — without it,
+			     @Data/@Getter/@AllArgsConstructor generated methods are invisible to javac -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<configuration>
+					<annotationProcessorPaths>
+						<path>
+							<groupId>org.projectlombok</groupId>
+							<artifactId>lombok</artifactId>
+							<version>${lombokVersion}</version>
+						</path>
+					</annotationProcessorPaths>
+				</configuration>
+			</plugin>
 			<plugin>
 				<groupId>org.openmrs.maven.plugins</groupId>
 				<artifactId>maven-openmrs-plugin</artifactId>
@@ -123,29 +138,9 @@
 			<scope>provided</scope>
 		</dependency>
 
-		<dependency>
-			<groupId>org.bahmni.module</groupId>
-			<artifactId>fhir2Extension-api</artifactId>
-			<scope>provided</scope>
-		</dependency>
 
-		<dependency>
-			<groupId>org.bahmni.module</groupId>
-			<artifactId>fhir2Extension-omod</artifactId>
-			<scope>provided</scope>
-		</dependency>
+		<!-- Bahmni fhir2Extension removed: replaced by standard OpenMRS fhir2-api above -->
 
-		<dependency>
-			<groupId>org.openmrs.module</groupId>
-			<artifactId>emrapi-api</artifactId>
-			<scope>provided</scope>
-		</dependency>
-
-		<dependency>
-			<groupId>org.bahmni.module</groupId>
-			<artifactId>bahmnicore-api</artifactId>
-			<scope>provided</scope>
-		</dependency>
 
 		<dependency>
 			<groupId>org.bahmni.module</groupId>

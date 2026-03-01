@@ -7,21 +7,28 @@
 	<name>${project.parent.name}</name>
 	<version>${project.parent.version}</version>
 	<package>${MODULE_PACKAGE}</package>
-	<author>Bahmni</author>
+	<author>NIDAN EHR</author>
 	<description>${project.parent.description}</description>
+
+	<require_version>2.7.0</require_version>
 
 	<require_modules>
 		<require_module>org.openmrs.module.webservices.rest</require_module>
-		<require_module>org.bahmni.module.bahmnicore</require_module>
 		<require_module>org.openmrs.module.bedmanagement</require_module>
+		<!-- medication-administration module required for ipd_slot FK to medication_administration table -->
 		<require_module>org.bahmni.module.medication-administration</require_module>
-		<require_module>org.bahmni.module.fhir2Extension</require_module>
 	</require_modules>
 
 	<globalProperty>
-		<property>bahmni-ipd.allowSlotStopOnDrugOrderStop</property>
-		<defaultValue>true</defaultValue>
-		<description>Feature toggle to decide whether to stop slots associated when drug order is stopped</description>
+		<property>nidan.ipd.allowSlotStopOnDrugOrderStop</property>
+		<defaultValue>false</defaultValue>
+		<description>Feature toggle: when true, IPD slots are stopped when the associated drug order is stopped</description>
+	</globalProperty>
+
+	<globalProperty>
+		<property>nidan.ipd.orderAttributesConceptSetName</property>
+		<defaultValue>Order Attributes</defaultValue>
+		<description>Name of the OpenMRS concept set that contains order attribute concepts (e.g. sort weight). Used to derive slot ordering for IPD drug orders.</description>
 	</globalProperty>
 
 	<privilege>

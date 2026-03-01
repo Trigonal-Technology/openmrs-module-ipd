@@ -21,7 +21,7 @@ public class Schedule extends BaseChangeableOpenmrsData {
 
 	@EqualsAndHashCode.Include
 	@Id
-	@GeneratedValue(strategy = GenerationType.AUTO)
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	@Column(name = "schedule_id")
 	private Integer id;
 
@@ -34,7 +34,7 @@ public class Schedule extends BaseChangeableOpenmrsData {
 	private Reference subject;
 
 	/**
-	 * Should we rename it to "carer/executor/  actor"
+	 * Should we rename it to "carer/executor/ actor"
 	 * This can have reference which execute the schedule is being created
 	 */
 	@ManyToOne(cascade = CascadeType.ALL)

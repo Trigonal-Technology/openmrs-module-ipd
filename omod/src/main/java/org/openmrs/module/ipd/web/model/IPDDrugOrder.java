@@ -1,21 +1,24 @@
 package org.openmrs.module.ipd.web.model;
 
 import lombok.*;
-import org.openmrs.module.bahmniemrapi.drugorder.contract.BahmniDrugOrder;
 
+/**
+ * IPD drug order model — wraps the native NIDAN drug order DTO.
+ * Replaces the previous Bahmni-coupled version that wrapped BahmniDrugOrder.
+ */
 @Getter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class IPDDrugOrder {
 
-    private BahmniDrugOrder bahmniDrugOrder;
+    private NidanDrugOrderDTO nidanDrugOrder;
     private DrugOrderSchedule drugOrderSchedule;
 
-    public static IPDDrugOrder createFrom(BahmniDrugOrder bahmniDrugOrder,DrugOrderSchedule drugOrderSchedule){
-        return IPDDrugOrder.builder().
-                bahmniDrugOrder(bahmniDrugOrder).
-                drugOrderSchedule(drugOrderSchedule).
-                build();
+    public static IPDDrugOrder createFrom(NidanDrugOrderDTO nidanDrugOrderDTO, DrugOrderSchedule drugOrderSchedule) {
+        return IPDDrugOrder.builder()
+                .nidanDrugOrder(nidanDrugOrderDTO)
+                .drugOrderSchedule(drugOrderSchedule)
+                .build();
     }
 }

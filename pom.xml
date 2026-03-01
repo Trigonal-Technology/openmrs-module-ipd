@@ -46,7 +46,7 @@
 		<mockitoVersion>3.5.11</mockitoVersion>
 		<argLine>-Xmx1024m</argLine>
 		<jacocoVersion>0.7.9</jacocoVersion>
-		<lombokVersion>1.18.26</lombokVersion>
+		<lombokVersion>1.18.36</lombokVersion>
 		<openmrsFhir2Version>2.1.0</openmrsFhir2Version>
 		<fhir2ExtensionVersion>1.3.0</fhir2ExtensionVersion>
 		<bahmniVersion>1.2.0</bahmniVersion>

@@ -29,6 +29,22 @@
 		</testResources>
 
 		<plugins>
+			<!-- Wire Lombok as an annotation processor so @Data/@Getter/@AllArgsConstructor
+			     etc. are visible to javac. Without this, modern JDK silently skips Lombok
+			     and all generated methods are missing at compile time. -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<configuration>
+					<annotationProcessorPaths>
+						<path>
+							<groupId>org.projectlombok</groupId>
+							<artifactId>lombok</artifactId>
+							<version>${lombokVersion}</version>
+						</path>
+					</annotationProcessorPaths>
+				</configuration>
+			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-jar-plugin</artifactId>

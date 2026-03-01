@@ -25,16 +25,16 @@ public class Reference extends BaseOpenmrsMetadata {
 		this.targetUuid = targetUuid;
 		this.setName(type + "/" + targetUuid);
 	}
-	
+
 	@EqualsAndHashCode.Include
 	@Id
-	@GeneratedValue(strategy = GenerationType.AUTO)
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	@Column(name = "reference_id")
 	private Integer id;
-	
+
 	@Column(name = "target_type", nullable = false)
 	private String type;
-	
+
 	@Column(name = "target_uuid", nullable = false)
 	private String targetUuid;
 }
