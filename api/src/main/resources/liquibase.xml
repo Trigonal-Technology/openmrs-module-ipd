@@ -277,10 +277,10 @@
         <sql dbms="postgresql">
             INSERT INTO concept (retired, short_name, description, datatype_id, class_id, is_set, creator, date_created,
                                  changed_by, date_changed, uuid)
-            VALUES (0, 'MedicationRequest', 'MedicationRequest',
+            VALUES (false, 'MedicationRequest', 'MedicationRequest',
                     (SELECT concept_datatype_id FROM concept_datatype WHERE name = 'Text'),
                     (SELECT concept_class_id FROM concept_class WHERE name = 'Misc'),
-                    0, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, gen_random_uuid()::varchar);
+                    false, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, gen_random_uuid()::varchar);
         </sql>
     </changeSet>
 
@@ -301,7 +301,7 @@
             INSERT INTO concept_name (concept_id, name, locale, locale_preferred, creator, date_created,
                                       concept_name_type, voided, uuid)
             VALUES ((SELECT concept_id FROM concept WHERE short_name='MedicationRequest'),
-                    'MedicationRequest', 'en', 1, 1, CURRENT_TIMESTAMP, 'FULLY_SPECIFIED', 0, gen_random_uuid()::varchar);
+                    'MedicationRequest', 'en', true, 1, CURRENT_TIMESTAMP, 'FULLY_SPECIFIED', false, gen_random_uuid()::varchar);
         </sql>
     </changeSet>
 
@@ -386,14 +386,14 @@
         <sql dbms="postgresql">
             INSERT INTO concept (retired, short_name, description, datatype_id, class_id, is_set, creator, date_created,
                 changed_by, date_changed, uuid)
-            VALUES (0, 'EmergencyMedicationRequest', 'EmergencyMedicationRequest',
+            VALUES (false, 'EmergencyMedicationRequest', 'EmergencyMedicationRequest',
                 (SELECT concept_datatype_id FROM concept_datatype WHERE name = 'Text'),
                 (SELECT concept_class_id FROM concept_class WHERE name = 'Misc'),
-                0, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, gen_random_uuid()::varchar);
+                false, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, gen_random_uuid()::varchar);
             INSERT INTO concept_name (concept_id, name, locale, locale_preferred, creator, date_created,
                 concept_name_type, voided, uuid)
             VALUES ((SELECT concept_id FROM concept WHERE short_name='EmergencyMedicationRequest'),
-                'EmergencyMedicationRequest', 'en', 1, 1, CURRENT_TIMESTAMP, 'FULLY_SPECIFIED', 0, gen_random_uuid()::varchar);
+                'EmergencyMedicationRequest', 'en', true, 1, CURRENT_TIMESTAMP, 'FULLY_SPECIFIED', false, gen_random_uuid()::varchar);
         </sql>
     </changeSet>
 
@@ -425,14 +425,14 @@
         <sql dbms="postgresql">
             INSERT INTO concept (retired, short_name, description, datatype_id, class_id, is_set, creator, date_created,
                 changed_by, date_changed, uuid)
-            VALUES (0, 'AsNeededMedicationRequest', 'AsNeededMedicationRequest',
+            VALUES (false, 'AsNeededMedicationRequest', 'AsNeededMedicationRequest',
                 (SELECT concept_datatype_id FROM concept_datatype WHERE name = 'Text'),
                 (SELECT concept_class_id FROM concept_class WHERE name = 'Misc'),
-                0, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, gen_random_uuid()::varchar);
+                false, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, gen_random_uuid()::varchar);
             INSERT INTO concept_name (concept_id, name, locale, locale_preferred, creator, date_created,
                 concept_name_type, voided, uuid)
             VALUES ((SELECT concept_id FROM concept WHERE short_name='AsNeededMedicationRequest'),
-                'AsNeededMedicationRequest', 'en', 1, 1, CURRENT_TIMESTAMP, 'FULLY_SPECIFIED', 0, gen_random_uuid()::varchar);
+                'AsNeededMedicationRequest', 'en', true, 1, CURRENT_TIMESTAMP, 'FULLY_SPECIFIED', false, gen_random_uuid()::varchar);
         </sql>
     </changeSet>
 
@@ -464,14 +464,14 @@
         <sql dbms="postgresql">
             INSERT INTO concept (retired, short_name, description, datatype_id, class_id, is_set, creator, date_created,
                 changed_by, date_changed, uuid)
-            VALUES (0, 'AsNeededPlaceholder', 'AsNeededPlaceholder',
+            VALUES (false, 'AsNeededPlaceholder', 'AsNeededPlaceholder',
                 (SELECT concept_datatype_id FROM concept_datatype WHERE name = 'Text'),
                 (SELECT concept_class_id FROM concept_class WHERE name = 'Misc'),
-                0, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, gen_random_uuid()::varchar);
+                false, 1, CURRENT_TIMESTAMP, 1, CURRENT_TIMESTAMP, gen_random_uuid()::varchar);
             INSERT INTO concept_name (concept_id, name, locale, locale_preferred, creator, date_created,
                 concept_name_type, voided, uuid)
             VALUES ((SELECT concept_id FROM concept WHERE short_name='AsNeededPlaceholder'),
-                'AsNeededPlaceholder', 'en', 1, 1, CURRENT_TIMESTAMP, 'FULLY_SPECIFIED', 0, gen_random_uuid()::varchar);
+                'AsNeededPlaceholder', 'en', true, 1, CURRENT_TIMESTAMP, 'FULLY_SPECIFIED', false, gen_random_uuid()::varchar);
         </sql>
     </changeSet>
 

@@ -1,23 +1,21 @@
 package org.openmrs.module.ipd.api.events;
 
 import org.openmrs.module.fhir2.model.FhirTask;
-import org.openmrs.module.fhirExtension.web.contract.TaskRequest;
+// import org.openmrs.module.fhirExtension.web.contract.TaskRequest;
 import org.openmrs.module.ipd.api.events.model.IPDEvent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Date;
 
 public class IPDEventUtils {
+    private static final Logger log = LoggerFactory.getLogger(IPDEventUtils.class);
 
-    public static TaskRequest createNonMedicationTaskRequest(IPDEvent ipdEvent, String name, String taskType, Boolean isSystemGenerated) {
-        TaskRequest taskRequest = new TaskRequest();
-        taskRequest.setName(name);
-        taskRequest.setTaskType(taskType);
-        taskRequest.setEncounterUuid(ipdEvent.getEncounterUuid());
-        taskRequest.setPatientUuid(ipdEvent.getPatientUuid());
-        taskRequest.setRequestedStartTime(new Date());
-        taskRequest.setIntent(FhirTask.TaskIntent.ORDER);
-        taskRequest.setStatus(FhirTask.TaskStatus.REQUESTED);
-        taskRequest.setIsSystemGeneratedTask(isSystemGenerated);
-        return taskRequest;
+    public static Object createNonMedicationTaskRequest(IPDEvent ipdEvent, String name, String taskType,
+            Boolean isSystemGenerated) {
+        log.warn(
+                "createNonMedicationTaskRequest called, but Bahmni fhirExtension is disabled. Task not created for: {}",
+                name);
+        return null;
     }
 }

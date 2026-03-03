@@ -139,7 +139,6 @@
 		</dependency>
 
 
-		<!-- Bahmni fhir2Extension removed: replaced by standard OpenMRS fhir2-api above -->
 
 
 		<dependency>
