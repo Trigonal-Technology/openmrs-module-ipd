@@ -17,6 +17,7 @@ import javax.annotation.Nonnull;
 import java.util.HashSet;
 
 import ca.uhn.fhir.model.api.Include;
+import ca.uhn.fhir.rest.annotation.IncludeParam;
 import ca.uhn.fhir.rest.annotation.IdParam;
 import ca.uhn.fhir.rest.annotation.OptionalParam;
 import ca.uhn.fhir.rest.annotation.Read;
@@ -83,14 +84,13 @@ public class CareTeamFhirResourceProvider implements IResourceProvider {
 			includes = null;
 		}
 
-		CareTeamSearchParams searchParams = CareTeamSearchParams.builder()
-				.patientReference(patientReference)
-				.encounterReference(encounterReference)
-				.id(id)
-				.lastUpdated(lastUpdated)
-				.includes(includes)
-				.revIncludes(null)
-				.build();
+		CareTeamSearchParams searchParams = new CareTeamSearchParams();
+		searchParams.setPatientReference(patientReference);
+		searchParams.setEncounterReference(encounterReference);
+		searchParams.setId(id);
+		searchParams.setLastUpdated(lastUpdated);
+		searchParams.setIncludes(includes);
+		searchParams.setRevIncludes(null);
 
 		return fhirCareTeamService.searchForCareTeams(searchParams);
 	}

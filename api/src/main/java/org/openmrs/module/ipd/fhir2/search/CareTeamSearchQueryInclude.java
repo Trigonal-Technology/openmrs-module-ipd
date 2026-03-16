@@ -22,7 +22,6 @@ import org.springframework.stereotype.Component;
 @Component("careTeamSearchQueryInclude")
 public class CareTeamSearchQueryInclude implements SearchQueryInclude<CareTeam> {
 
-	@Override
 	public Set<IBaseResource> getIncludedResources(List<CareTeam> resourceList, SearchParameterMap theParams) {
 		return Collections.emptySet();
 	}

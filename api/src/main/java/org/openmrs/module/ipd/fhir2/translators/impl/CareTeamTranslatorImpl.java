@@ -23,6 +23,7 @@ import org.openmrs.module.fhir2.api.translators.impl.FhirTranslatorUtils;
 import org.openmrs.module.fhir2.api.translators.impl.ReferenceHandlingTranslator;
 import org.openmrs.module.ipd.api.model.CareTeam;
 import org.openmrs.module.ipd.api.model.CareTeamParticipant;
+import org.openmrs.module.ipd.fhir2.translators.CareTeamParticipantTranslator;
 import org.openmrs.module.ipd.fhir2.translators.CareTeamTranslator;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -55,7 +56,7 @@ public class CareTeamTranslatorImpl implements CareTeamTranslator {
 			fhirObject.setSubject(patientReferenceTranslator.toFhirResource(openmrsObject.getPatient()));
 		}
 		if (openmrsObject.getVisit() != null) {
-			fhirObject.addEncounter(encounterReferenceTranslator.toFhirResource(openmrsObject.getVisit()));
+			fhirObject.setEncounter(encounterReferenceTranslator.toFhirResource(openmrsObject.getVisit()));
 		}
 		if (openmrsObject.getStartTime() != null || openmrsObject.getEndTime() != null) {
 			Period period = new Period();
@@ -84,7 +85,6 @@ public class CareTeamTranslatorImpl implements CareTeamTranslator {
 		return toOpenmrsType(new CareTeam(), fhirObject);
 	}
 
-	@Override
 	public CareTeam toOpenmrsType(@Nonnull CareTeam openmrsObject,
 			@Nonnull org.hl7.fhir.r4.model.CareTeam fhirObject) {
 		notNull(openmrsObject, "The existing Openmrs CareTeam object should not be null");
@@ -96,8 +96,8 @@ public class CareTeamTranslatorImpl implements CareTeamTranslator {
 		if (fhirObject.hasSubject()) {
 			openmrsObject.setPatient(patientReferenceTranslator.toOpenmrsType(fhirObject.getSubject()));
 		}
-		if (fhirObject.hasEncounter() && !fhirObject.getEncounter().isEmpty()) {
-			openmrsObject.setVisit(encounterReferenceTranslator.toOpenmrsType(fhirObject.getEncounterFirstRep()));
+		if (fhirObject.hasEncounter()) {
+			openmrsObject.setVisit(encounterReferenceTranslator.toOpenmrsType(fhirObject.getEncounter()));
 		}
 		if (fhirObject.hasPeriod()) {
 			Period period = fhirObject.getPeriod();

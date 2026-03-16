@@ -1,59 +1,65 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public License,
+ * v. 2.0. If a copy of the MPL was not distributed with this file, You can
+ * obtain one at http://mozilla.org/MPL/2.0/. OpenMRS is also distributed under
+ * the terms of the Healthcare Disclaimer located at http://openmrs.org/license.
+ */
 package org.openmrs.module.ipd.api.service.impl;
 
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnitRunner;
-import org.openmrs.Concept;
-import org.openmrs.ConceptName;
-import org.openmrs.Patient;
 import org.openmrs.Visit;
 import org.openmrs.module.ipd.api.dao.CareTeamDAO;
-import org.openmrs.module.ipd.api.dao.ScheduleDAO;
 import org.openmrs.module.ipd.api.model.CareTeam;
-import org.openmrs.module.ipd.api.model.Reference;
-import org.openmrs.module.ipd.api.model.Schedule;
-
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
 
 @RunWith(MockitoJUnitRunner.class)
 public class CareTeamServiceImplTest {
 
-    @InjectMocks
-    private CareTeamServiceImpl careTeamService;
+	@Mock
+	private CareTeamDAO careTeamDAO;
 
-    @Mock
-    private CareTeamDAO careTeamDAO;
+	private CareTeamServiceImpl service;
 
-    @Test
-    public void shouldInvokeSaveCareTeamWithGivenCareTeam() {
-        CareTeam careTeam = new CareTeam();
-        CareTeam expectedCareTeam = new CareTeam();
-        expectedCareTeam.setId(1);
+	@Before
+	public void setup() {
+		service = new CareTeamServiceImpl();
+		service.setCareTeamDAO(careTeamDAO);
+	}
 
-        Mockito.when(careTeamDAO.saveCareTeam(careTeam)).thenReturn(expectedCareTeam);
+	@Test
+	public void saveCareTeam_shouldDelegateToDao() {
+		CareTeam careTeam = new CareTeam();
+		CareTeam saved = new CareTeam();
+		saved.setUuid("saved-uuid");
+		when(careTeamDAO.saveCareTeam(careTeam)).thenReturn(saved);
 
-        careTeamService.saveCareTeam(careTeam);
+		CareTeam result = service.saveCareTeam(careTeam);
 
-        Mockito.verify(careTeamDAO, Mockito.times(1)).saveCareTeam(careTeam);
-    }
+		assertThat(result, notNullValue());
+		assertThat(result.getUuid(), equalTo("saved-uuid"));
+		verify(careTeamDAO).saveCareTeam(careTeam);
+	}
 
-    @Test
-    public void shouldInvokeGetCareTeamWithGivenVisit() {
-        CareTeam expectedCareTeam = new CareTeam();
-        Visit visit = new Visit();
-        expectedCareTeam.setId(1);
+	@Test
+	public void getCareTeamByVisit_shouldDelegateToDao() {
+		Visit visit = new Visit();
+		CareTeam careTeam = new CareTeam();
+		careTeam.setUuid("ct-uuid");
+		when(careTeamDAO.getCareTeamByVisit(visit)).thenReturn(careTeam);
 
-        Mockito.when(careTeamDAO.getCareTeamByVisit(visit)).thenReturn(expectedCareTeam);
+		CareTeam result = service.getCareTeamByVisit(visit);
 
-        careTeamService.getCareTeamByVisit(visit);
-
-        Mockito.verify(careTeamDAO, Mockito.times(1)).getCareTeamByVisit(visit);
-    }
-
+		assertThat(result, notNullValue());
+		assertThat(result.getUuid(), equalTo("ct-uuid"));
+		verify(careTeamDAO).getCareTeamByVisit(visit);
+	}
 }

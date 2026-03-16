@@ -9,13 +9,9 @@
  */
 package org.openmrs.module.ipd.fhir2.search.param;
 
-import java.util.Set;
-
-import ca.uhn.fhir.model.api.Include;
 import ca.uhn.fhir.rest.param.DateRangeParam;
 import ca.uhn.fhir.rest.param.ReferenceAndListParam;
 import ca.uhn.fhir.rest.param.TokenAndListParam;
-import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -30,17 +26,6 @@ public class CareTeamSearchParams extends BaseResourceSearchParams {
 
 	private ReferenceAndListParam patientReference;
 	private ReferenceAndListParam encounterReference;
-
-	@Builder
-	public CareTeamSearchParams(ReferenceAndListParam patientReference,
-			ReferenceAndListParam encounterReference,
-			TokenAndListParam id, DateRangeParam lastUpdated, Set<Include> includes, Set<Include> revIncludes) {
-
-		super(id, lastUpdated, null, includes, revIncludes);
-
-		this.patientReference = patientReference;
-		this.encounterReference = encounterReference;
-	}
 
 	@Override
 	public SearchParameterMap toSearchParameterMap() {

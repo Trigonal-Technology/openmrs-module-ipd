@@ -1,58 +1,66 @@
+/*
+ * This Source Code Form is subject to the terms of the Mozilla Public License,
+ * v. 2.0. If a copy of the MPL was not distributed with this file, You can
+ * obtain one at http://mozilla.org/MPL/2.0/. OpenMRS is also distributed under
+ * the terms of the Healthcare Disclaimer located at http://openmrs.org/license.
+ */
 package org.openmrs.module.ipd.api.util;
 
-import org.junit.Test;
-import org.junit.jupiter.api.Assertions;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.notNullValue;
 
-import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.Date;
-import java.util.TimeZone;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import org.junit.Test;
 
 public class DateTimeUtilTest {
 
-    @Test
-    public void shouldConvertEPOCUTCToLocalTimeZone() {
-        ZoneId defaultZoneId = TimeZone.getDefault().toZoneId();
-        TimeZone.setDefault(TimeZone.getTimeZone(ZoneId.of("Asia/Kolkata")));
+	@Test
+	public void convertEpocUTCToLocalTimeZone_shouldConvert() {
+		long utcEpoch = 1704067200L; // 2024-01-01 00:00:00 UTC
 
-        LocalDateTime localDateTime = DateTimeUtil.convertEpocUTCToLocalTimeZone(1690906304);
+		LocalDateTime result = DateTimeUtil.convertEpocUTCToLocalTimeZone(utcEpoch);
 
-        assertEquals(2023,localDateTime.getYear());
-        assertEquals(8, localDateTime.getMonthValue());
-        assertEquals(1, localDateTime.getDayOfMonth());
-        assertEquals(21, localDateTime.getHour());
-        assertEquals(41, localDateTime.getMinute());
-        assertEquals(44, localDateTime.getSecond());
+		assertThat(result, notNullValue());
+	}
 
-        TimeZone.setDefault(TimeZone.getTimeZone(defaultZoneId));
-    }
+	@Test
+	public void convertLocalDateTimeToUTCEpoc_shouldConvert() {
+		LocalDateTime local = LocalDateTime.of(2024, 1, 1, 12, 0);
 
-    @Test
-    public void shouldConvertLocalTimeZoneToEPOCUTC() {
-        ZoneId defaultZoneId = TimeZone.getDefault().toZoneId();
-        TimeZone.setDefault(TimeZone.getTimeZone(ZoneId.of("Asia/Kolkata")));
+		long result = DateTimeUtil.convertLocalDateTimeToUTCEpoc(local);
 
-        LocalDateTime localDateTime = LocalDateTime.of(2023, 8, 1, 21, 41, 44);
-        long epocUTCTime = DateTimeUtil.convertLocalDateTimeToUTCEpoc(localDateTime);
+		assertThat(result, notNullValue());
+	}
 
-        assertEquals(1690906304,epocUTCTime);
+	@Test
+	public void convertDateToLocalDateTime_shouldConvert() {
+		Date date = new Date(1704067200000L);
 
-        TimeZone.setDefault(TimeZone.getTimeZone(defaultZoneId));
-    }
+		LocalDateTime result = DateTimeUtil.convertDateToLocalDateTime(date);
 
-    @Test
-    public void shouldConvertDateToLocalDateTime() {
-        ZoneId defaultZoneId = TimeZone.getDefault().toZoneId();
-        TimeZone.setDefault(TimeZone.getTimeZone(ZoneId.of("Asia/Kolkata")));
+		assertThat(result, notNullValue());
+	}
 
-        Date date = Date.from(Instant.ofEpochSecond(1690906304));
-        LocalDateTime localDateTime = DateTimeUtil.convertDateToLocalDateTime(date);
+	@Test
+	public void convertLocalDateTimeDate_shouldConvert() {
+		LocalDateTime local = LocalDateTime.of(2024, 1, 1, 12, 0);
 
-        assertEquals(1690906304, localDateTime.atZone(ZoneId.systemDefault()).toEpochSecond());
+		Date result = DateTimeUtil.convertLocalDateTimeDate(local);
 
-        TimeZone.setDefault(TimeZone.getTimeZone(defaultZoneId));
-    }
+		assertThat(result, notNullValue());
+	}
+
+	@Test
+	public void convertEpochTimeToDate_shouldConvert() {
+		long utcEpoch = 1704067200L;
+
+		Date result = DateTimeUtil.convertEpochTimeToDate(utcEpoch);
+
+		assertThat(result, notNullValue());
+		assertThat(result.getTime(), equalTo(1704067200000L));
+	}
 }

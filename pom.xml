@@ -36,6 +36,8 @@
 	</modules>
 
 	<properties>
+		<!-- Set jacoco.skip=false for coverage; true avoids JDK 21+ compatibility issues -->
+		<jacoco.skip>true</jacoco.skip>
 		<openmrsPlatformVersion>2.5.12</openmrsPlatformVersion>
 		<openMRSWebServicesVersion>2.44.0</openMRSWebServicesVersion>
 		<bedManagementVersion>6.0.0</bedManagementVersion>
@@ -47,7 +49,7 @@
 		<argLine>-Xmx1024m</argLine>
 		<jacocoVersion>0.7.9</jacocoVersion>
 		<lombokVersion>1.18.36</lombokVersion>
-		<openmrsFhir2Version>2.1.0</openmrsFhir2Version>
+		<openmrsFhir2Version>3.1.0-nidan-SNAPSHOT</openmrsFhir2Version>
 
 		<bahmniVersion>1.2.0</bahmniVersion>
 		<emrapi-omod.version>1.36.0</emrapi-omod.version>
@@ -340,6 +342,16 @@
 			<url>https://mavenrepo.openmrs.org/public</url>
 		</repository>
 		<repository>
+			<id>openmrs-snapshots</id>
+			<name>OpenMRS Snapshot Repository</name>
+			<url>https://mavenrepo.openmrs.org/snapshots</url>
+			<snapshots>
+				<enabled>true</enabled>
+				<!-- Prefer local .m2 for nidan SNAPSHOTs; avoid remote lookup until Maven account is set up -->
+				<updatePolicy>never</updatePolicy>
+			</snapshots>
+		</repository>
+		<repository>
 			<id>central</id>
 			<name>Maven Repository Switchboard</name>
 			<layout>default</layout>
@@ -356,10 +368,25 @@
 				<enabled>false</enabled>
 			</snapshots>
 		</pluginRepository>
+		<pluginRepository>
+			<id>openmrs-snapshots</id>
+			<name>OpenMRS Snapshot Repository</name>
+			<url>https://mavenrepo.openmrs.org/snapshots</url>
+			<snapshots>
+				<enabled>true</enabled>
+				<updatePolicy>never</updatePolicy>
+			</snapshots>
+		</pluginRepository>
 	</pluginRepositories>
 
 
 	<profiles>
+		<profile>
+			<id>coverage</id>
+			<properties>
+				<jacoco.skip>false</jacoco.skip>
+			</properties>
+		</profile>
 		<profile>
 			<id>release-sign-artifacts</id>
 			<activation>

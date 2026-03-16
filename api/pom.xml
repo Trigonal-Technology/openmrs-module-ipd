@@ -47,6 +47,16 @@
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<version>2.10</version>
+				<configuration>
+					<excludes>
+						<exclude>**/*IntegrationTest.java</exclude>
+					</excludes>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-jar-plugin</artifactId>
 				<version>2.4</version>
 				<executions>
@@ -57,41 +67,45 @@
 					</execution>
 				</executions>
 			</plugin>
-			<!--<plugin>
-				<groupId>org.jacoco</groupId>
-				<artifactId>jacoco-maven-plugin</artifactId>
-				<version>${jacocoVersion}</version>
-				<configuration>
-					<includes>
-						<include>**/*</include>
-						<include>**/*</include>
-					</includes>
-					<excludes>
-						<exclude>**/*Activator.class</exclude>
-						<exclude>**/configuration/**</exclude>
-					</excludes>
-				</configuration>
-				<executions>
-					<execution>
-						<goals>
-							<goal>prepare-agent</goal>
-						</goals>
-					</execution>
-				</executions>
-			</plugin>
 			<plugin>
 				<groupId>org.jacoco</groupId>
 				<artifactId>jacoco-maven-plugin</artifactId>
 				<version>${jacocoVersion}</version>
+				<configuration>
+					<skip>${jacoco.skip}</skip>
+					<excludes>
+						<exclude>**/IPDActivator.class</exclude>
+						<exclude>**/PrivilegeConstants.class</exclude>
+						<exclude>**/IPDConstants.class</exclude>
+						<exclude>**/model/**</exclude>
+						<exclude>**/db/**</exclude>
+						<exclude>**/dao/impl/**</exclude>
+						<exclude>**/fhir2/dao/impl/**</exclude>
+						<exclude>**/events/**</exclude>
+						<exclude>**/scheduler/**</exclude>
+					</excludes>
+				</configuration>
 				<executions>
 					<execution>
-						<id>check</id>
+						<id>prepare-agent</id>
+						<goals>
+							<goal>prepare-agent</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>report</id>
+						<phase>test</phase>
 						<goals>
 							<goal>report</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>check</id>
+						<phase>package</phase>
+						<goals>
 							<goal>check</goal>
 						</goals>
 						<configuration>
-							<outputDirectory>${project.build.directory}/jacoco-reports</outputDirectory>
 							<rules>
 								<rule>
 									<element>BUNDLE</element>
@@ -99,12 +113,12 @@
 										<limit>
 											<counter>LINE</counter>
 											<value>COVEREDRATIO</value>
-											<minimum>0.60</minimum>
+											<minimum>0.80</minimum>
 										</limit>
 										<limit>
 											<counter>BRANCH</counter>
 											<value>COVEREDRATIO</value>
-											<minimum>0.60</minimum>
+											<minimum>0.70</minimum>
 										</limit>
 									</limits>
 								</rule>
@@ -112,7 +126,7 @@
 						</configuration>
 					</execution>
 				</executions>
-			</plugin>-->
+			</plugin>
 		</plugins>
 	</build>
 

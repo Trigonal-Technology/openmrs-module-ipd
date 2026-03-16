@@ -11,77 +11,66 @@ Example: `http://localhost:8080/openmrs/ws/rest/v1`
 
 ## Table of Contents
 
-1. [Medication Administration](#1-medication-administration)
-2. [Wards](#2-wards)
-3. [Visit Medications](#3-visit-medications)
-4. [Schedule](#4-schedule)
-5. [Care Team](#5-care-team)
+1. [APIs (Request & Response with Samples)](#1-apis-request--response-with-samples)
+2. [Comparison with Upstream Repositories](#2-comparison-with-upstream-repositories)
+3. [Comparison Table: Nidan vs Bahmni](#3-comparison-table-nidan-vs-bahmni)
+4. [Bahmni Frontend Compatibility & Breaking Changes](#4-bahmni-frontend-compatibility--breaking-changes)
 
 ---
 
-## 1. Medication Administration
+## 1. APIs (Request & Response with Samples)
 
-Base path: `/ipd`
+### 1.1 Medication Administration
 
-### 1.1 Create Scheduled Medication Administrations
+#### POST /ipd/scheduledMedicationAdministrations
 
 Creates multiple scheduled medication administration records.
 
-**Endpoint:** `POST /ipd/scheduledMedicationAdministrations`
-
-**Required privilege:** `Edit Medication Administration`
-
-**Request body:** `List<MedicationAdministrationRequest>`
-
-| Field | Type | Description |
-|-------|------|-------------|
-| uuid | string | (optional) UUID for update |
-| patientUuid | string | Patient UUID |
-| encounterUuid | string | Encounter UUID |
-| orderUuid | string | Drug order UUID |
-| providers | array | List of performer objects |
-| notes | array | List of note objects |
-| status | string | e.g. COMPLETED, INPROGRESS |
-| statusReason | string | Reason for status |
-| drugUuid | string | Drug concept UUID |
-| dosingInstructions | string | Free-text instructions |
-| dose | number | Dose amount |
-| doseUnits | string | Dose units concept |
-| route | string | Route concept |
-| site | string | Administration site |
-| administeredDateTime | long | Unix timestamp (seconds) |
-| slotUuid | string | Associated slot UUID |
-
-** providers item:**
-| Field | Type |
-|-------|------|
-| uuid | string |
-| providerUuid | string |
-| function | string |
-
-** notes item:**
-| Field | Type |
-|-------|------|
-| uuid | string |
-| authorUuid | string |
-| recordedTime | long |
-| text | string |
-
-**Response:** `200 OK` - `List<MedicationAdministrationResponse>`
-
+**Request:**
 ```json
 [
   {
-    "uuid": "abc-123-def",
-    "patientUuid": "patient-uuid",
-    "encounterUuid": "encounter-uuid",
-    "orderUuid": "order-uuid",
-    "providers": [{"uuid": "...", "provider": {...}, "function": "performer"}],
-    "notes": [{"uuid": "...", "author": {...}, "recordedTime": "...", "text": "..."}],
+    "patientUuid": "86526ed5-3c4b-4a3b-9a2b-1c2d3e4f5a6b",
+    "encounterUuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "orderUuid": "order-uuid-here",
+    "providers": [
+      {
+        "providerUuid": "provider-uuid-here",
+        "function": "concept-uuid-for-performer"
+      }
+    ],
+    "notes": [],
+    "status": "COMPLETED",
+    "drugUuid": "drug-concept-uuid",
+    "dose": 500.0,
+    "doseUnits": "concept-uuid-for-mg",
+    "route": "concept-uuid-for-oral",
+    "administeredDateTime": 1710580200,
+    "slotUuid": "slot-uuid-here"
+  }
+]
+```
+
+**Response (200 OK):**
+```json
+[
+  {
+    "uuid": "abc-123-def-456",
+    "patientUuid": "86526ed5-3c4b-4a3b-9a2b-1c2d3e4f5a6b",
+    "encounterUuid": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "orderUuid": "order-uuid-here",
+    "providers": [
+      {
+        "uuid": "performer-uuid",
+        "provider": {"uuid": "...", "display": "Dr. Smith"},
+        "function": "performer"
+      }
+    ],
+    "notes": [],
     "status": "COMPLETED",
     "statusReason": null,
     "drug": {"uuid": "...", "display": "Paracetamol 500mg"},
-    "dosingInstructions": "Take with food",
+    "dosingInstructions": null,
     "dose": 500.0,
     "doseUnits": {"uuid": "...", "display": "mg"},
     "route": {"uuid": "...", "display": "Oral"},
@@ -91,111 +80,39 @@ Creates multiple scheduled medication administration records.
 ]
 ```
 
-**Example request:**
+**Sample curl:**
 ```bash
 curl -X POST "http://localhost:8080/openmrs/ws/rest/v1/ipd/scheduledMedicationAdministrations" \
   -H "Content-Type: application/json" \
   -H "Cookie: JSESSIONID=..." \
-  -d '[
-    {
-      "patientUuid": "86526ed5-3c4b-4a3b-9a2b-1c2d3e4f5a6b",
-      "encounterUuid": "enc-uuid-here",
-      "orderUuid": "order-uuid-here",
-      "providers": [{"providerUuid": "provider-uuid", "function": "performer"}],
-      "notes": [],
-      "status": "COMPLETED",
-      "drugUuid": "drug-concept-uuid",
-      "dose": 500.0,
-      "doseUnits": "mg",
-      "route": "oral",
-      "administeredDateTime": 1710580200,
-      "slotUuid": "slot-uuid"
-    }
-  ]'
+  -d '[{"patientUuid":"patient-uuid","encounterUuid":"enc-uuid","orderUuid":"order-uuid","providers":[{"providerUuid":"provider-uuid","function":"concept-uuid"}],"notes":[],"status":"COMPLETED","drugUuid":"drug-uuid","dose":500.0,"doseUnits":"concept-uuid","route":"concept-uuid","administeredDateTime":1710580200,"slotUuid":"slot-uuid"}]'
 ```
 
 ---
 
-### 1.2 Create Adhoc Medication Administration
+#### POST /ipd/adhocMedicationAdministrations
 
 Creates a single adhoc (one-off) medication administration.
 
-**Endpoint:** `POST /ipd/adhocMedicationAdministrations`
+**Request:** Same structure as above (single object, no array).
 
-**Required privilege:** `Edit adhoc medication tasks`
-
-**Request body:** `MedicationAdministrationRequest` (single object, same structure as above)
-
-**Response:** `200 OK` - `MedicationAdministrationResponse`
-
-**Example request:**
-```bash
-curl -X POST "http://localhost:8080/openmrs/ws/rest/v1/ipd/adhocMedicationAdministrations" \
-  -H "Content-Type: application/json" \
-  -H "Cookie: JSESSIONID=..." \
-  -d '{
-    "patientUuid": "86526ed5-3c4b-4a3b-9a2b-1c2d3e4f5a6b",
-    "encounterUuid": "enc-uuid",
-    "orderUuid": "order-uuid",
-    "providers": [{"providerUuid": "provider-uuid", "function": "performer"}],
-    "notes": [],
-    "status": "COMPLETED",
-    "drugUuid": "drug-uuid",
-    "dose": 10.0,
-    "doseUnits": "mg",
-    "route": "oral",
-    "administeredDateTime": 1710580200
-  }'
-```
+**Response (200 OK):** Single `MedicationAdministrationResponse` object.
 
 ---
 
-### 1.3 Update Adhoc Medication Administration
+#### PUT /ipd/adhocMedicationAdministrations/{medicationAdministrationUuid}
 
 Updates an existing adhoc medication administration.
 
-**Endpoint:** `PUT /ipd/adhocMedicationAdministrations/{medicationAdministrationUuid}`
-
-**Path parameter:** `medicationAdministrationUuid` - UUID of the medication administration
-
-**Request body:** `MedicationAdministrationRequest` (same structure as create)
-
-**Response:** `200 OK` - `MedicationAdministrationResponse`
-
-**Example request:**
-```bash
-curl -X PUT "http://localhost:8080/openmrs/ws/rest/v1/ipd/adhocMedicationAdministrations/ma-uuid-here" \
-  -H "Content-Type: application/json" \
-  -H "Cookie: JSESSIONID=..." \
-  -d '{
-    "uuid": "ma-uuid-here",
-    "patientUuid": "patient-uuid",
-    "status": "ENTEREDINERROR",
-    "notes": [{"text": "Administered in error"}]
-  }'
-```
+**Request:** Same structure as create; include `uuid` for update.
 
 ---
 
-## 2. Wards
+### 1.2 Wards
 
-Base path: `/ipd/wards`
+#### GET /ipd/wards/{wardUuid}/summary?providerUuid={providerUuid}
 
-### 2.1 Get Ward Summary
-
-Returns patient statistics for a ward, optionally filtered by provider.
-
-**Endpoint:** `GET /ipd/wards/{wardUuid}/summary`
-
-**Path parameter:** `wardUuid` - Ward/location UUID
-
-**Query parameters:**
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| providerUuid | string | Yes | Provider UUID to filter "my patients" count |
-
-**Response:** `200 OK` - `IPDWardPatientSummaryResponse`
-
+**Response (200 OK):**
 ```json
 {
   "totalPatients": 25,
@@ -203,42 +120,31 @@ Returns patient statistics for a ward, optionally filtered by provider.
 }
 ```
 
-**Example request:**
-```bash
-curl "http://localhost:8080/openmrs/ws/rest/v1/ipd/wards/ward-location-uuid/summary?providerUuid=provider-uuid"
-```
-
 ---
 
-### 2.2 Get Ward Patients
+#### GET /ipd/wards/{wardUuid}/patients?offset=0&limit=10&sortBy=bedNumber
 
-Returns paginated list of patients in a ward.
-
-**Endpoint:** `GET /ipd/wards/{wardUuid}/patients`
-
-**Path parameter:** `wardUuid` - Ward/location UUID
-
-**Query parameters:**
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| offset | integer | Yes | Pagination offset |
-| limit | integer | Yes | Page size |
-| sortBy | string | No | Sort field |
-
-**Response:** `200 OK` - `IPDPatientDetailsResponse`
-
+**Response (200 OK):**
 ```json
 {
   "admittedPatients": [
     {
-      "patientDetails": {"uuid": "...", "display": "John Doe", ...},
+      "patientDetails": {"uuid": "...", "display": "John Doe"},
       "bedDetails": {"uuid": "...", "display": "Bed 101"},
       "visitDetails": {"uuid": "...", "display": "..."},
       "newTreatments": 2,
       "careTeam": {
         "uuid": "...",
         "patientUuid": "...",
-        "participants": [{"uuid": "...", "provider": {...}, "startTime": 1710580200000, "endTime": null, "voided": false}]
+        "participants": [
+          {
+            "uuid": "...",
+            "provider": {"uuid": "...", "display": "Dr. Smith"},
+            "startTime": 1710580200000,
+            "endTime": null,
+            "voided": false
+          }
+        ]
       }
     }
   ],
@@ -246,85 +152,25 @@ Returns paginated list of patients in a ward.
 }
 ```
 
-**Example request:**
-```bash
-curl "http://localhost:8080/openmrs/ws/rest/v1/ipd/wards/ward-uuid/patients?offset=0&limit=10&sortBy=bedNumber"
-```
+---
+
+#### GET /ipd/wards/{wardUuid}/myPatients?providerUuid={uuid}&offset=0&limit=10
+
+Same response structure as `/patients`.
 
 ---
 
-### 2.3 Get Provider's Patients in Ward
+#### GET /ipd/wards/{wardUuid}/patients/search?offset=0&limit=10&searchKeys=name&searchKeys=identifier&searchValue=John
 
-Returns paginated list of patients assigned to a specific provider in a ward.
-
-**Endpoint:** `GET /ipd/wards/{wardUuid}/myPatients`
-
-**Path parameter:** `wardUuid` - Ward/location UUID
-
-**Query parameters:**
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| providerUuid | string | Yes | Provider UUID |
-| offset | integer | Yes | Pagination offset |
-| limit | integer | Yes | Page size |
-| sortBy | string | No | Sort field |
-
-**Response:** `200 OK` - `IPDPatientDetailsResponse` (same structure as 2.2)
-
-**Example request:**
-```bash
-curl "http://localhost:8080/openmrs/ws/rest/v1/ipd/wards/ward-uuid/myPatients?providerUuid=provider-uuid&offset=0&limit=10"
-```
+Same response structure as `/patients`.
 
 ---
 
-### 2.4 Search Patients in Ward
+### 1.3 Visit Medications
 
-Searches patients in a ward by specified keys and value.
+#### GET /ipdVisit/{visitUuid}/medication?includes=emergencyMedications
 
-**Endpoint:** `GET /ipd/wards/{wardUuid}/patients/search`
-
-**Path parameter:** `wardUuid` - Ward/location UUID
-
-**Query parameters:**
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| offset | integer | Yes | Pagination offset |
-| limit | integer | Yes | Page size |
-| searchKeys | list | Yes | Fields to search (e.g. name, identifier) |
-| searchValue | string | Yes | Search term |
-| sortBy | string | No | Sort field |
-
-**Response:** `200 OK` - `IPDPatientDetailsResponse` (same structure as 2.2)
-
-**Example request:**
-```bash
-curl "http://localhost:8080/openmrs/ws/rest/v1/ipd/wards/ward-uuid/patients/search?offset=0&limit=10&searchKeys=name&searchKeys=identifier&searchValue=John"
-```
-
----
-
-## 3. Visit Medications
-
-Base path: `/ipdVisit/{visitUuid}`
-
-### 3.1 Get Visit Medications
-
-Returns prescribed drug orders and optionally emergency medications for a visit.
-
-**Endpoint:** `GET /ipdVisit/{visitUuid}/medication`
-
-**Path parameter:** `visitUuid` - Visit UUID
-
-**Query parameters:**
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| includes | list | No | Include "emergencyMedications" to add emergency meds |
-
-**Required privileges:** `Get Medication Administration`, `Get Medication Tasks`
-
-**Response:** `200 OK` - `IPDTreatmentsResponse`
-
+**Response (200 OK):**
 ```json
 {
   "ipdDrugOrders": [
@@ -334,25 +180,12 @@ Returns prescribed drug orders and optionally emergency medications for a visit.
       "dose": 500.0,
       "doseUnitsName": "mg",
       "routeName": "Oral",
-      "durationUnitsName": "days",
-      "duration": 5,
-      "quantity": 10.0,
-      "quantityUnitsName": "tablet",
       "frequency": "Twice daily",
-      "asNeeded": false,
-      "action": "NEW",
-      "orderSetUuid": null,
-      "providerUuid": "provider-uuid",
-      "providerName": "Dr. Smith",
       "drugOrderSchedule": {
         "firstDaySlotsStartTime": [1710580200000],
         "dayWiseSlotsStartTime": [43200000],
-        "remainingDaySlotsStartTime": [],
-        "slotStartTime": 1710580200000,
         "medicationAdministrationStarted": true,
-        "pendingSlotsAvailable": false,
-        "allSlotsAttended": true,
-        "notes": null
+        "allSlotsAttended": true
       }
     }
   ],
@@ -360,260 +193,93 @@ Returns prescribed drug orders and optionally emergency medications for a visit.
     {
       "uuid": "...",
       "status": "COMPLETED",
-      "administeredDateTime": "...",
-      "drug": {...},
-      "dose": 5.0,
-      ...
+      "administeredDateTime": "2024-03-16T10:30:00.000+0000",
+      "drug": {"uuid": "...", "display": "Paracetamol"},
+      "dose": 5.0
     }
   ]
 }
 ```
 
-**Example request:**
-```bash
-curl "http://localhost:8080/openmrs/ws/rest/v1/ipdVisit/visit-uuid/medication?includes=emergencyMedications"
-```
-
 ---
 
-## 4. Schedule
+### 1.4 Schedule
 
-Base path: `/ipd/schedule`
+#### POST /ipd/schedule/type/medication
 
-### 4.1 Create Medication Schedule
+**Request:**
+```json
+{
+  "patientUuid": "patient-uuid",
+  "orderUuid": "order-uuid",
+  "providerUuid": "provider-uuid",
+  "slotStartTime": 1710580200,
+  "firstDaySlotsStartTime": [1710580200],
+  "dayWiseSlotsStartTime": [43200000],
+  "remainingDaySlotsStartTime": [],
+  "medicationFrequency": "FIXED_SCHEDULE_FREQUENCY",
+  "serviceType": "MEDICATION_REQUEST"
+}
+```
 
-Creates a new medication schedule with slots.
-
-**Endpoint:** `POST /ipd/schedule/type/medication`
-
-**Required privilege:** `Edit Medication Tasks`
-
-**Request body:** `ScheduleMedicationRequest`
-
-| Field | Type | Description |
-|-------|------|-------------|
-| patientUuid | string | Patient UUID |
-| orderUuid | string | Drug order UUID |
-| providerUuid | string | Provider UUID |
-| comments | string | Optional comments |
-| slotStartTime | long | Unix timestamp (seconds) for schedule start |
-| firstDaySlotsStartTime | array | Timestamps for first-day slots |
-| dayWiseSlotsStartTime | array | Recurring daily slot times (ms from midnight) |
-| remainingDaySlotsStartTime | array | Slots for remaining days |
-| medicationFrequency | string | `START_TIME_DURATION_FREQUENCY` or `FIXED_SCHEDULE_FREQUENCY` |
-| serviceType | string | `MEDICATION_REQUEST`, `EMERGENCY_MEDICATION_REQUEST`, `AS_NEEDED_MEDICATION_REQUEST`, `AS_NEEDED_PLACEHOLDER` |
-
-**Response:** `200 OK` - `ScheduleMedicationResponse`
-
+**Response (200 OK):**
 ```json
 {
   "id": 1,
   "patientUuid": "patient-uuid",
-  "comments": "Morning dose",
+  "comments": null,
   "startDate": 1710580200,
   "endDate": null,
   "order": null
 }
 ```
 
-**Example request:**
-```bash
-curl -X POST "http://localhost:8080/openmrs/ws/rest/v1/ipd/schedule/type/medication" \
-  -H "Content-Type: application/json" \
-  -H "Cookie: JSESSIONID=..." \
-  -d '{
-    "patientUuid": "patient-uuid",
-    "orderUuid": "order-uuid",
-    "providerUuid": "provider-uuid",
-    "slotStartTime": 1710580200,
-    "firstDaySlotsStartTime": [1710580200],
-    "dayWiseSlotsStartTime": [43200000],
-    "remainingDaySlotsStartTime": [],
-    "medicationFrequency": "FIXED_SCHEDULE_FREQUENCY",
-    "serviceType": "MEDICATION_REQUEST"
-  }'
-```
+---
+
+#### POST /ipd/schedule/type/medication/edit
+
+Same request/response as create.
 
 ---
 
-### 4.2 Update Medication Schedule
+#### GET /ipd/schedule/type/medication?patientUuid={uuid}&startTime={epoch}&endTime={epoch}&view=drugChart
 
-Updates an existing medication schedule.
-
-**Endpoint:** `POST /ipd/schedule/type/medication/edit`
-
-**Required privilege:** `Edit Medication Tasks`
-
-**Request body:** `ScheduleMedicationRequest` (same as create, include schedule identifier if applicable)
-
-**Response:** `200 OK` - `ScheduleMedicationResponse`
+**Response (200 OK):** `List<MedicationScheduleResponse>` with slots.
 
 ---
 
-### 4.3 Get Medication Slots by Date Range
+#### GET /ipd/schedule/type/medication?patientUuid={uuid}&orderUuids=order1&orderUuids=order2
 
-Returns medication slots for a patient within a time frame.
+**Response (200 OK):** `List<MedicationSlotResponse>`.
 
-**Endpoint:** `GET /ipd/schedule/type/medication`
+---
 
-**Required query params:** `patientUuid`, `startTime`, `endTime`
+#### GET /ipd/schedule/type/medication/patientsMedicationSummary?patientUuids=uuid1&patientUuids=uuid2&startTime={epoch}&endTime={epoch}
 
-**Query parameters:**
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| patientUuid | string | Yes | Patient UUID |
-| startTime | long | Yes | Start timestamp (epoch seconds) |
-| endTime | long | Yes | End timestamp (epoch seconds) |
-| visitUuid | string | No | Visit UUID (defaults to active visit) |
-| view | string | No | `drugChart` for drug chart view (uses administered time) |
+**Response (200 OK):** `List<PatientMedicationSummaryResponse>`.
 
-**Required privileges:** `Get Medication Administration`, `Get Medication Tasks`
+---
 
-**Response:** `200 OK` - `List<MedicationScheduleResponse>`
+### 1.5 Care Team
 
+#### POST /ipd/careteam/participants
+
+**Request:**
 ```json
-[
-  {
-    "id": 1,
-    "uuid": "schedule-uuid",
-    "serviceType": "MedicationRequest",
-    "comments": null,
-    "startDate": 1710580200,
-    "endDate": null,
-    "slots": [
-      {
-        "id": 1,
-        "uuid": "slot-uuid",
-        "serviceType": "MedicationRequest",
-        "status": "COMPLETED",
-        "startTime": 1710580200,
-        "order": {...},
-        "medicationAdministration": {...},
-        "notes": null
-      }
-    ]
-  }
-]
+{
+  "patientUuid": "patient-uuid",
+  "careTeamParticipantsRequest": [
+    {
+      "providerUuid": "provider-uuid",
+      "startTime": 1710580200000,
+      "endTime": null,
+      "voided": false
+    }
+  ]
+}
 ```
 
-**Example request:**
-```bash
-curl "http://localhost:8080/openmrs/ws/rest/v1/ipd/schedule/type/medication?patientUuid=patient-uuid&startTime=1710504000&endTime=1710590400&view=drugChart"
-```
-
----
-
-### 4.4 Get Medication Slots by Order
-
-Returns medication slots for a patient, optionally filtered by order UUIDs or service type.
-
-**Endpoint:** `GET /ipd/schedule/type/medication`
-
-**Required query param:** `patientUuid` only (no startTime/endTime)
-
-**Query parameters:**
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| patientUuid | string | Yes | Patient UUID |
-| serviceType | string | No | `MEDICATION_REQUEST`, `EMERGENCY_MEDICATION_REQUEST`, etc. |
-| orderUuids | list | No | Filter by order UUIDs |
-
-**Required privileges:** `Get Medication Administration`, `Get Medication Tasks`
-
-**Response:** `200 OK` - `List<MedicationSlotResponse>`
-
-```json
-[
-  {
-    "id": 1,
-    "uuid": "slot-uuid",
-    "serviceType": "MedicationRequest",
-    "status": "COMPLETED",
-    "startTime": 1710580200,
-    "order": {...},
-    "medicationAdministration": {...},
-    "notes": null
-  }
-]
-```
-
-**Example request:**
-```bash
-curl "http://localhost:8080/openmrs/ws/rest/v1/ipd/schedule/type/medication?patientUuid=patient-uuid&orderUuids=order1&orderUuids=order2"
-```
-
----
-
-### 4.5 Get Patients Medication Summary
-
-Returns medication summary for multiple patients within a time range.
-
-**Endpoint:** `GET /ipd/schedule/type/medication/patientsMedicationSummary`
-
-**Query parameters:**
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| patientUuids | list | Yes | List of patient UUIDs |
-| startTime | long | Yes | Start timestamp (epoch seconds) |
-| endTime | long | Yes | End timestamp (epoch seconds) |
-| includePreviousSlot | boolean | No | Include previous slot in summary |
-| includeSlotDuration | boolean | No | Include slot duration |
-
-**Response:** `200 OK` - `List<PatientMedicationSummaryResponse>`
-
-```json
-[
-  {
-    "patientUuid": "patient-uuid",
-    "prescribedOrderSlots": [
-      {
-        "orderUuid": "order-uuid",
-        "currentSlots": [...],
-        "previousSlot": {...},
-        "initialSlotStartTime": 1710580200,
-        "finalSlotStartTime": 1710666600
-      }
-    ],
-    "emergencyMedicationSlots": [...]
-  }
-]
-```
-
-**Example request:**
-```bash
-curl "http://localhost:8080/openmrs/ws/rest/v1/ipd/schedule/type/medication/patientsMedicationSummary?patientUuids=uuid1&patientUuids=uuid2&startTime=1710504000&endTime=1710590400"
-```
-
----
-
-## 5. Care Team
-
-Base path: `/ipd/careteam`
-
-### 5.1 Create/Update Care Team Participants
-
-Saves or updates care team participants for a patient.
-
-**Endpoint:** `POST /ipd/careteam/participants`
-
-**Request body:** `CareTeamRequest`
-
-| Field | Type | Description |
-|-------|------|-------------|
-| patientUuid | string | Patient UUID |
-| careTeamParticipantsRequest | array | List of participant objects |
-
-** careTeamParticipantsRequest item:**
-| Field | Type | Description |
-|-------|------|-------------|
-| uuid | string | (optional) For update |
-| startTime | long | Start timestamp (ms) |
-| endTime | long | End timestamp (ms) |
-| providerUuid | string | Provider UUID |
-| voided | boolean | Whether voided |
-
-**Response:** `200 OK` - `CareTeamResponse`
-
+**Response (200 OK):**
 ```json
 {
   "uuid": "careteam-uuid",
@@ -630,47 +296,106 @@ Saves or updates care team participants for a patient.
 }
 ```
 
-**Example request:**
-```bash
-curl -X POST "http://localhost:8080/openmrs/ws/rest/v1/ipd/careteam/participants" \
-  -H "Content-Type: application/json" \
-  -H "Cookie: JSESSIONID=..." \
-  -d '{
-    "patientUuid": "patient-uuid",
-    "careTeamParticipantsRequest": [
-      {
-        "providerUuid": "provider-uuid",
-        "startTime": 1710580200000,
-        "endTime": null,
-        "voided": false
-      }
-    ]
-  }'
-```
+---
+
+### 1.6 FHIR CareTeam (Nidan-only)
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/ws/fhir2/R4/CareTeam/{id}` | GET | Read CareTeam by ID |
+| `/ws/fhir2/R4/CareTeam?patient={ref}&encounter={ref}` | GET | Search CareTeam |
+
+---
+
+## 2. Comparison with Upstream Repositories
+
+### 2.1 [Bahmni/openmrs-module-ipd](https://github.com/Bahmni/openmrs-module-ipd)
+
+| Aspect | Bahmni Upstream | Nidan (Ours) |
+|--------|-----------------|---------------|
+| **REST endpoints** | Same paths | Same paths |
+| **Medication storage** | FHIR2 (FHIR MedicationAdministration in DB) | Domain model (medication-administration-api) |
+| **doseUnits, route, site, function** | Concept **name** (`getConceptByName`) | Concept **UUID** (`getConceptByUuid`) |
+| **Dependencies** | fhir2Extension-api, fhir2Extension-omod, medication-administration 1.0.0 | No fhir2Extension; medication-administration 2.0.0-nidan-SNAPSHOT |
+| **FHIR CareTeam** | Via fhir2Extension (if present) | Built-in in IPD (`org.openmrs.module.ipd.fhir2`) |
+| **FHIR2 version** | 2.1.0 | 3.1.0-nidan-SNAPSHOT (local build) |
+
+### 2.2 [Bahmni/bahmni-module-fhir2-addl-extension](https://github.com/Bahmni/bahmni-module-fhir2-addl-extension)
+
+This module provides FHIR2 extensions (MedicationAdministration, CareTeam, etc.) used by Bahmni IPD. Nidan does **not** use this module; we implement FHIR CareTeam directly in the IPD module and use medication-administration-api for MedicationAdministration storage.
+
+---
+
+## 3. Comparison Table: Nidan vs Bahmni
+
+| Feature | Bahmni | Nidan |
+|---------|--------|-------|
+| **Module version** | 1.2.0-SNAPSHOT | 1.2.0-nidan-SNAPSHOT |
+| **fhir2Extension** | Required | Not used |
+| **medication-administration-api** | 1.0.0 | 2.0.0-nidan-SNAPSHOT |
+| **FHIR2** | 2.1.0 | 3.1.0-nidan-SNAPSHOT |
+| **MedicationAdministration storage** | FHIR resource (FHIR2 DB) | Domain model (Hibernate) |
+| **doseUnits in request** | Concept name (e.g. `"mg"`) | Concept UUID |
+| **route in request** | Concept name (e.g. `"Oral"`) | Concept UUID |
+| **site in request** | Concept name | Concept UUID |
+| **function in providers** | Concept name (e.g. `"Performer"`) | Concept UUID |
+| **FHIR CareTeam** | Via fhir2Extension | Built-in in IPD |
+| **API.md** | Not present | Present (this file) |
+
+---
+
+## 4. Bahmni Frontend Compatibility & Breaking Changes
+
+The [Bahmni/openmrs-module-ipd-frontend](https://github.com/Bahmni/openmrs-module-ipd-frontend) uses these IPD endpoints (from `constants.js`):
+
+| Frontend constant | URL | Nidan backend |
+|-------------------|-----|---------------|
+| MEDICATIONS_BASE_URL | `/ipd/schedule/type/medication` | ✓ Same |
+| EDIT_MEDICATIONS_BASE_URL | `/ipd/schedule/type/medication/edit` | ✓ Same |
+| ADMINISTERED_MEDICATIONS_BASE_URL | `/ipd/scheduledMedicationAdministrations` | ✓ Same |
+| EMERGENCY_MEDICATIONS_BASE_URL | `/ipd/adhocMedicationAdministrations` | ✓ Same |
+| BOOKMARK_PATIENT_BASE_URL | `/ipd/careteam/participants` | ✓ Same |
+| ALL_DRUG_ORDERS_URL | `/ipdVisit/{visitUuid}/medication?includes=emergencyMedications` | ✓ Same |
+| WARD_SUMMARY_URL | `/ipd/wards/{wardId}/summary` | ✓ Same |
+| GET_PATIENT_LIST_URL | `/ipd/wards/{wardId}/patients` | ✓ Same |
+| GET_MY_PATIENT_LIST_URL | `/ipd/wards/{wardId}/myPatients` | ✓ Same |
+| GET_SEARCH_PATIENT_LIST_URL | `/ipd/wards/{wardId}/patients/search` | ✓ Same |
+| GET_SLOTS_FOR_PATIENTS_URL | `/ipd/schedule/type/medication/patientsMedicationSummary` | ✓ Same |
+
+### Breaking Changes When Using Bahmni Frontend with Nidan Backend
+
+| Issue | Bahmni frontend sends | Nidan backend expects | Fix |
+|-------|------------------------|------------------------|-----|
+| **doseUnits** | Concept name (e.g. `"mg"`) | Concept UUID | Frontend must send concept UUID or backend must add `getConceptByName` fallback |
+| **route** | Concept name (e.g. `"Oral"`) | Concept UUID | Same |
+| **site** | Concept name | Concept UUID | Same |
+| **function (in providers)** | Concept name (e.g. `"Performer"`, `"Witness"`, `"Verifier"`) | Concept UUID | Same |
+| **Schedule GET params** | `forDate` (in DrugChartUtils) | `startTime`, `endTime` (epoch seconds) | Frontend must convert date to startTime/endTime |
+| **bahmnicore** | `/bahmnicore/*` (diagnosis, encounter, etc.) | Not in IPD; requires bahmnicore module | Deploy bahmnicore or adapt frontend |
+| **admissionLocation** | `/admissionLocation` for ward list | Not in IPD | Use OpenMRS location API or bedmanagement |
+| **tasks** | `/tasks` for nursing tasks | Not in IPD | Requires tasks module |
+
+### Non-IPD Dependencies Used by Bahmni Frontend
+
+The Bahmni IPD frontend also calls:
+
+- `BAHMNI_CORE` – diagnosis, encounter, forms, observations, visit summary
+- `FHIR2_R4` – AllergyIntolerance
+- `LIST_OF_WARDS_URL` – `/admissionLocation`
+- `BED_INFORMATION_URL` – `/beds`
+- `GET_TASKS_FOR_PATIENTS_URL` – `/tasks`
+
+These are outside the IPD module. A full Bahmni frontend deployment requires bahmnicore, bedmanagement, and possibly a tasks module.
 
 ---
 
 ## Error Responses
-
-All endpoints may return:
 
 | Status | Description |
 |--------|-------------|
 | 400 Bad Request | Invalid parameters or business logic error |
 | 403 Forbidden | Missing required privilege |
 | 500 Internal Server Error | Server error |
-
-Error response format:
-
-```json
-{
-  "error": {
-    "message": "Error description",
-    "code": "optional_error_code",
-    "detail": "Optional detailed message"
-  }
-}
-```
 
 ---
 
