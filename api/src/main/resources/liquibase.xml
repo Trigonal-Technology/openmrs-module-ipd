@@ -2,7 +2,7 @@
 
 <!--
     IPD Module Liquibase changelog.
-    Compatible with: MySQL 5.7+, MariaDB 10+, PostgreSQL 12+
+    Compatible with: MySQL 5.7+, MariaDB 10+, PostgreSQL 13+ (gen_random_uuid built-in)
 
     Portability rules applied:
       - DATETIME  → TIMESTAMP  (PostgreSQL has no DATETIME type)
