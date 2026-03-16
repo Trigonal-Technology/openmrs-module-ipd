@@ -4,7 +4,7 @@
 
 	<groupId>org.bahmni.module</groupId>
 	<artifactId>bahmni-ipd</artifactId>
-	<version>1.2.0-SNAPSHOT</version>
+	<version>1.2.0-nidan-SNAPSHOT</version>
 	<packaging>pom</packaging>
 	<name>Bahmni IPD</name>
 	<description>Bahmni IPD module contains all backend APIs for IPD</description>
@@ -51,7 +51,7 @@
 
 		<bahmniVersion>1.2.0</bahmniVersion>
 		<emrapi-omod.version>1.36.0</emrapi-omod.version>
-		<medicationAdminstrationVersion>2.0.0-SNAPSHOT</medicationAdminstrationVersion>
+		<medicationAdminstrationVersion>2.0.0-nidan-SNAPSHOT</medicationAdminstrationVersion>
 	</properties>
 
 	<build>
