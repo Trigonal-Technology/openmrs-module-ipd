@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
 import static org.springframework.http.HttpStatus.*;
 
 @Controller
-@RequestMapping(value = "/rest/" + RestConstants.VERSION_1 + "/tasks")
+@RequestMapping(value = "/rest/" + RestConstants.VERSION_1 + "/ipd/tasks")
 @Slf4j
 public class IPDTaskController extends BaseRestController {
 
