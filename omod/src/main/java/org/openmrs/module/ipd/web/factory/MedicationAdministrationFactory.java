@@ -1,5 +1,6 @@
 package org.openmrs.module.ipd.web.factory;
 
+import org.apache.commons.lang.StringUtils;
 import org.openmrs.DrugOrder;
 import org.openmrs.api.context.Context;
 import org.openmrs.module.ipd.api.model.MedicationAdministration;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Component;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.UUID;
 
 @Component
 public class MedicationAdministrationFactory {
@@ -23,6 +25,7 @@ public class MedicationAdministrationFactory {
 
         MedicationAdministration medicationAdministration = new MedicationAdministration();
         if (existingMedicationAdministration == null || existingMedicationAdministration.getId() == null) {
+            medicationAdministration.setUuid(uuidOrGenerate(request.getUuid()));
             medicationAdministration.setAdministeredDateTime(request.getAdministeredDateTimeAsLocaltime());
             medicationAdministration
                     .setStatus(MedicationAdministration.MedicationAdministrationStatus
@@ -49,7 +52,7 @@ public class MedicationAdministrationFactory {
         if (request.getProviders() != null) {
             for (MedicationAdministrationPerformerRequest performer : request.getProviders()) {
                 MedicationAdministrationPerformer newProvider = new MedicationAdministrationPerformer();
-                newProvider.setUuid(performer.getUuid());
+                newProvider.setUuid(uuidOrGenerate(performer.getUuid()));
                 newProvider.setActor(Context.getProviderService().getProviderByUuid(performer.getProviderUuid()));
                 newProvider.setFunction(Context.getConceptService().getConceptByUuid(performer.getFunction()));
                 providers.add(newProvider);
@@ -63,7 +66,7 @@ public class MedicationAdministrationFactory {
         if (request.getNotes() != null) {
             for (MedicationAdministrationNoteRequest note : request.getNotes()) {
                 MedicationAdministrationNote newNote = new MedicationAdministrationNote();
-                newNote.setUuid(note.getUuid());
+                newNote.setUuid(uuidOrGenerate(note.getUuid()));
                 newNote.setAuthor(Context.getProviderService().getProviderByUuid(note.getAuthorUuid()));
                 newNote.setText(note.getText());
                 newNote.setRecordedTime(note.getRecordedTimeAsLocaltime());
@@ -80,6 +83,14 @@ public class MedicationAdministrationFactory {
     public MedicationAdministrationResponse mapMedicationAdministrationToResponse(
             MedicationAdministration medicationAdministration) {
         return MedicationAdministrationResponse.createFrom(medicationAdministration);
+    }
+
+    /**
+     * Entities use {@code not-null} {@code uuid} columns; clients may omit uuid on create for the parent
+     * {@link MedicationAdministration} and for nested notes/performers.
+     */
+    private static String uuidOrGenerate(String requested) {
+        return StringUtils.isNotBlank(requested) ? requested : UUID.randomUUID().toString();
     }
 
 }
