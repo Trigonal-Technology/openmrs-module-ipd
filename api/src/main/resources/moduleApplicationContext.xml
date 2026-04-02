@@ -29,6 +29,9 @@
     <bean id="hibernateWardDAO" class="org.openmrs.module.ipd.api.dao.impl.HibernateWardDAO">
         <property name="sessionFactory" ref="sessionFactory"/>
     </bean>
+    <bean id="hibernateTaskDAO" class="org.openmrs.module.ipd.api.dao.impl.HibernateTaskDAO">
+        <property name="sessionFactory" ref="sessionFactory"/>
+    </bean>
 
     <!-- End DAO Beans -->
 
@@ -120,6 +123,24 @@
             <list merge="true">
                 <value>org.openmrs.module.ipd.api.service.CareTeamService</value>
                 <ref bean="careTeamService"/>
+            </list>
+        </property>
+    </bean>
+
+    <bean id="taskServiceImpl" class="org.openmrs.module.ipd.api.service.impl.TaskServiceImpl">
+        <property name="taskDAO" ref="hibernateTaskDAO"/>
+    </bean>
+    <bean id="taskService" class="org.springframework.transaction.interceptor.TransactionProxyFactoryBean">
+        <property name="transactionManager" ref="transactionManager"/>
+        <property name="target" ref="taskServiceImpl"/>
+        <property name="preInterceptors" ref="serviceInterceptors"/>
+        <property name="transactionAttributeSource" ref="transactionAttributeSource"/>
+    </bean>
+    <bean parent="serviceContext">
+        <property name="moduleService">
+            <list merge="true">
+                <value>org.openmrs.module.ipd.api.service.TaskService</value>
+                <ref bean="taskService"/>
             </list>
         </property>
     </bean>

@@ -55,6 +55,18 @@
 		<name>Get Medication Tasks</name>
 		<description>Allows to Get Medication Tasks</description>
 	</privilege>
+	<privilege>
+		<name>Get Tasks</name>
+		<description>Allows to Get IPD nursing/non-medication tasks</description>
+	</privilege>
+	<privilege>
+		<name>Add Tasks</name>
+		<description>Allows to create IPD nursing/non-medication tasks</description>
+	</privilege>
+	<privilege>
+		<name>Edit Tasks</name>
+		<description>Allows to edit IPD nursing/non-medication tasks</description>
+	</privilege>
 	<activator>org.openmrs.module.ipd.api.IPDActivator</activator>
 </module>
 

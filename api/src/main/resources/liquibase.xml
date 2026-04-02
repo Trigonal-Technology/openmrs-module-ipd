@@ -737,4 +737,79 @@
         </sql>
     </changeSet>
 
+    <changeSet id="ipd-task-20260331-create-table" author="nidan">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="ipd_task"/>
+            </not>
+        </preConditions>
+        <comment>Create ipd_task table for nursing/non-medication task APIs</comment>
+        <createTable tableName="ipd_task">
+            <column name="task_id" type="int" autoIncrement="true">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="patient_id" type="int">
+                <constraints nullable="false"/>
+            </column>
+            <column name="task_type_concept_id" type="int"/>
+            <column name="name" type="varchar(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="varchar(1024)"/>
+            <column name="status" type="varchar(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="intent" type="varchar(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="priority" type="varchar(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="execution_start_time" type="TIMESTAMP"/>
+            <column name="execution_end_time" type="TIMESTAMP"/>
+            <column name="notes" type="varchar(2048)"/>
+            <column name="creator" type="int">
+                <constraints nullable="false"/>
+            </column>
+            <column name="date_created" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="changed_by" type="int"/>
+            <column name="date_changed" type="TIMESTAMP"/>
+            <column name="voided" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="voided_by" type="int"/>
+            <column name="date_voided" type="TIMESTAMP"/>
+            <column name="void_reason" type="varchar(255)"/>
+            <column name="uuid" type="varchar(38)">
+                <constraints nullable="false" unique="true"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint baseTableName="ipd_task" baseColumnNames="patient_id"
+                                 constraintName="ipd_task_patient_fk"
+                                 referencedTableName="patient" referencedColumnNames="patient_id"/>
+        <addForeignKeyConstraint baseTableName="ipd_task" baseColumnNames="task_type_concept_id"
+                                 constraintName="ipd_task_task_type_fk"
+                                 referencedTableName="concept" referencedColumnNames="concept_id"/>
+        <addForeignKeyConstraint baseTableName="ipd_task" baseColumnNames="creator"
+                                 constraintName="ipd_task_creator_fk"
+                                 referencedTableName="users" referencedColumnNames="user_id"/>
+        <addForeignKeyConstraint baseTableName="ipd_task" baseColumnNames="changed_by"
+                                 constraintName="ipd_task_changed_by_fk"
+                                 referencedTableName="users" referencedColumnNames="user_id"/>
+        <addForeignKeyConstraint baseTableName="ipd_task" baseColumnNames="voided_by"
+                                 constraintName="ipd_task_voided_by_fk"
+                                 referencedTableName="users" referencedColumnNames="user_id"/>
+
+        <createIndex tableName="ipd_task" indexName="ipd_task_patient_status_idx">
+            <column name="patient_id"/>
+            <column name="status"/>
+        </createIndex>
+        <createIndex tableName="ipd_task" indexName="ipd_task_created_idx">
+            <column name="date_created"/>
+        </createIndex>
+    </changeSet>
+
 </databaseChangeLog>
