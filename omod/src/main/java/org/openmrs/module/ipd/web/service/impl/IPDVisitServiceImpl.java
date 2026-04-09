@@ -184,16 +184,17 @@ public class IPDVisitServiceImpl implements IPDVisitService {
         // Get drug order type
         OrderType drugOrderType = orderService.getOrderTypeByName("Drug Order");
 
-        // Use getActiveOrders as primary source (covers active prescriptions)
-        List<Order> activeOrders = orderService.getActiveOrders(patient, drugOrderType,
-                null /* all care settings */, new Date());
+        // ✅ FIX: Use getAllOrdersByPatient() instead of getActiveOrders() so that
+        // discontinued/stopped orders (which have dateStopped set) are also included.
+        // getActiveOrders() silently excludes any order with dateStopped != null.
+        List<Order> allOrders = orderService.getAllOrdersByPatient(patient);
 
-        // Also scan all orders on the visits' encounters to catch historical/stopped
-        // orders
         Set<String> visitUuidSet = new HashSet<>(visitUuids);
-        List<DrugOrder> visitOrders = activeOrders.stream()
+        List<DrugOrder> visitOrders = allOrders.stream()
+                .filter(order -> !order.getVoided())
                 .filter(order -> order instanceof DrugOrder)
                 .map(order -> (DrugOrder) order)
+                .filter(drugOrder -> drugOrderType.equals(drugOrder.getOrderType()))
                 .filter(drugOrder -> {
                     Encounter enc = drugOrder.getEncounter();
                     if (enc == null || enc.getVisit() == null)
@@ -233,21 +234,38 @@ public class IPDVisitServiceImpl implements IPDVisitService {
      * {@code BahmniDrugOrderMapper.mapToResponse() -> sortDrugOrders -> getDrugOrderSchedule}.
      */
     private List<IPDDrugOrder> buildIPDDrugOrders(String patientUuid, List<DrugOrder> drugOrders, Visit visit) {
-        // Build a discontinued-order map: DISCONTINUE/REVISE orders point to their
-        // previous order
+        // Build a discontinued-order map: previousOrder.uuid → discontinuing DrugOrder
+        // ✅ FIX: map is now actually used below to filter out raw DISCONTINUE action
+        // orders (they are not prescriptions themselves) and to enrich the original
+        // NEW orders with a "DISCONTINUE" action so the frontend can render them correctly.
         Map<String, DrugOrder> discontinuedOrderMap = buildDiscontinuedOrderMap(drugOrders);
+
+        // Exclude raw DISCONTINUE/REVISE orders from the list — only keep NEW/RENEW
+        // orders (which represent actual prescriptions). The discontinued state is
+        // conveyed via the action field override below.
+        List<DrugOrder> prescriptionOrders = drugOrders.stream()
+                .filter(o -> !Order.Action.DISCONTINUE.equals(o.getAction())
+                          && !Order.Action.REVISE.equals(o.getAction()))
+                .collect(Collectors.toList());
 
         // Build sort-weight map from OrderAttribute observations
         Map<String, Integer> sortWeightByOrderUuid = getSortWeightByOrderUuid(
-                visit.getPatient(), drugOrders);
+                visit.getPatient(), prescriptionOrders);
 
-        // Build NidanDrugOrderDTOs sorted by sort weight
-        List<NidanDrugOrderDTO> dtos = drugOrders.stream()
-                .map(drugOrder -> NidanDrugOrderDTO.createFrom(
-                        drugOrder, sortWeightByOrderUuid.get(drugOrder.getUuid())))
-                .sorted(Comparator
-                        .comparingInt(dto -> dto.getSortWeight() != null ? dto.getSortWeight() : Integer.MAX_VALUE))
-                .collect(Collectors.toList());
+        // Build NidanDrugOrderDTOs sorted by sort weight.
+        // If an order appears in discontinuedOrderMap it means it was discontinued —
+        // the DTO factory uses the discontinuing order to override the action field.
+        // Using a for-loop avoids Java overload-resolution ambiguity with the stream lambda.
+        List<NidanDrugOrderDTO> dtos = new ArrayList<>();
+        for (DrugOrder drugOrder : prescriptionOrders) {
+            NidanDrugOrderDTO dto = NidanDrugOrderDTO.createFrom(
+                    drugOrder,
+                    sortWeightByOrderUuid.get(drugOrder.getUuid()),
+                    discontinuedOrderMap.get(drugOrder.getUuid()));
+            dtos.add(dto);
+        }
+        dtos.sort(Comparator.comparingInt(
+                dto -> dto.getSortWeight() != null ? dto.getSortWeight() : Integer.MAX_VALUE));
 
         // Get scheduling information (slot time windows)
         List<String> orderUuids = dtos.stream().map(NidanDrugOrderDTO::getUuid).collect(Collectors.toList());
