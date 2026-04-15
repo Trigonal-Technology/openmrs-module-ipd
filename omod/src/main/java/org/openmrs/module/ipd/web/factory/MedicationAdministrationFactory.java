@@ -1,7 +1,9 @@
 package org.openmrs.module.ipd.web.factory;
 
 import org.apache.commons.lang.StringUtils;
+import org.openmrs.Concept;
 import org.openmrs.DrugOrder;
+import org.openmrs.api.ConceptService;
 import org.openmrs.api.context.Context;
 import org.openmrs.module.ipd.api.model.MedicationAdministration;
 import org.openmrs.module.ipd.api.model.MedicationAdministrationNote;
@@ -13,9 +15,11 @@ import org.openmrs.module.ipd.web.contract.MedicationAdministrationResponse;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 @Component
 public class MedicationAdministrationFactory {
@@ -23,13 +27,15 @@ public class MedicationAdministrationFactory {
     public MedicationAdministration mapRequestToMedicationAdministration(MedicationAdministrationRequest request,
             MedicationAdministration existingMedicationAdministration) {
 
-        MedicationAdministration medicationAdministration = new MedicationAdministration();
+        final MedicationAdministration medicationAdministration;
         if (existingMedicationAdministration == null || existingMedicationAdministration.getId() == null) {
+            medicationAdministration = new MedicationAdministration();
             medicationAdministration.setUuid(uuidOrGenerate(request.getUuid()));
             medicationAdministration.setAdministeredDateTime(request.getAdministeredDateTimeAsLocaltime());
-            medicationAdministration
-                    .setStatus(MedicationAdministration.MedicationAdministrationStatus
-                            .fromCode(request.getStatus()));
+            MedicationAdministration.MedicationAdministrationStatus status = MedicationAdministration.MedicationAdministrationStatus
+                    .fromCode(request.getStatus());
+            medicationAdministration.setStatus(status != null ? status
+                    : MedicationAdministration.MedicationAdministrationStatus.COMPLETED);
             medicationAdministration.setPatient(Context.getPatientService().getPatientByUuid(request.getPatientUuid()));
             medicationAdministration
                     .setEncounter(Context.getEncounterService().getEncounterByUuid(request.getEncounterUuid()));
@@ -42,11 +48,19 @@ public class MedicationAdministrationFactory {
             medicationAdministration.setRoute(Context.getConceptService().getConceptByUuid(request.getRoute()));
             medicationAdministration.setSite(Context.getConceptService().getConceptByUuid(request.getSite()));
         } else {
-            medicationAdministration.setUuid(existingMedicationAdministration.getUuid());
-            medicationAdministration
-                    .setStatus(MedicationAdministration.MedicationAdministrationStatus
-                            .fromCode(request.getStatus()));
-            medicationAdministration.setAdministeredDateTime(request.getAdministeredDateTimeAsLocaltime());
+            // PATCH onto persistent row — sparse new entity had null id → Hibernate INSERT + null status blow-up.
+            medicationAdministration = existingMedicationAdministration;
+            if (StringUtils.isNotBlank(request.getStatus())) {
+                MedicationAdministration.MedicationAdministrationStatus st = MedicationAdministration.MedicationAdministrationStatus
+                        .fromCode(request.getStatus());
+                if (st != null) {
+                    medicationAdministration.setStatus(st);
+                }
+            }
+            if (request.getAdministeredDateTime() != null) {
+                medicationAdministration.setAdministeredDateTime(
+                        new Date(TimeUnit.SECONDS.toMillis(request.getAdministeredDateTime())));
+            }
         }
         List<MedicationAdministrationPerformer> providers = new ArrayList<>();
         if (request.getProviders() != null) {
@@ -54,7 +68,8 @@ public class MedicationAdministrationFactory {
                 MedicationAdministrationPerformer newProvider = new MedicationAdministrationPerformer();
                 newProvider.setUuid(uuidOrGenerate(performer.getUuid()));
                 newProvider.setActor(Context.getProviderService().getProviderByUuid(performer.getProviderUuid()));
-                newProvider.setFunction(Context.getConceptService().getConceptByUuid(performer.getFunction()));
+                newProvider.setFunction(
+                        resolvePerformerFunctionConcept(Context.getConceptService(), performer.getFunction()));
                 providers.add(newProvider);
             }
             if (existingMedicationAdministration != null && existingMedicationAdministration.getPerformers() != null) {
@@ -91,6 +106,21 @@ public class MedicationAdministrationFactory {
      */
     private static String uuidOrGenerate(String requested) {
         return StringUtils.isNotBlank(requested) ? requested : UUID.randomUUID().toString();
+    }
+
+    /**
+     * Request {@code function} may be concept UUID (FHIR) or dictionary name e.g. {@code Performer}, {@code Witness}.
+     */
+    static Concept resolvePerformerFunctionConcept(ConceptService conceptService, String functionRef) {
+        if (StringUtils.isBlank(functionRef)) {
+            return null;
+        }
+        String trimmed = functionRef.trim();
+        Concept byUuid = conceptService.getConceptByUuid(trimmed);
+        if (byUuid != null) {
+            return byUuid;
+        }
+        return conceptService.getConceptByName(trimmed);
     }
 
 }

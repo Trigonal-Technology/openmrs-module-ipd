@@ -812,4 +812,18 @@
         </createIndex>
     </changeSet>
 
+    <!-- GLOBAL_PROPERTY emrapi.sqlSearch.emergencyMedicationToAcknowledge: upsert from module (runOnChange = re-apply when SQL file changes). -->
+    <changeSet id="global-property-emergency-medication-to-acknowledge-gp-mysql-20260415" author="nidan"
+               dbms="mysql,mariadb" runOnChange="true">
+        <comment>Upsert emrapi.sqlSearch.emergencyMedicationToAcknowledge (MySQL / MariaDB)</comment>
+        <sqlFile path="org/openmrs/module/ipd/db/emergency-medication-to-acknowledge-global-property-mysql-liquibase.sql"
+                 relativeToChangelogFile="false" splitStatements="true" stripComments="false" endDelimiter=";"/>
+    </changeSet>
+    <changeSet id="global-property-emergency-medication-to-acknowledge-gp-postgresql-20260415" author="nidan"
+               dbms="postgresql" runOnChange="true">
+        <comment>Upsert emrapi.sqlSearch.emergencyMedicationToAcknowledge (PostgreSQL)</comment>
+        <sqlFile path="org/openmrs/module/ipd/db/emergency-medication-to-acknowledge-global-property-postgresql-liquibase.sql"
+                 relativeToChangelogFile="false" splitStatements="true" stripComments="false" endDelimiter=";"/>
+    </changeSet>
+
 </databaseChangeLog>
