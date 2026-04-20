@@ -44,18 +44,15 @@ public class TaskTemplateController extends BaseRestController {
     private final PatientTaskTemplateService patientTaskTemplateService;
     private final LocationService locationService;
     private final ConceptService conceptService;
-    private final org.openmrs.api.PatientService openmrsPatientService;
 
     public TaskTemplateController(TaskTemplateService taskTemplateService,
                                    PatientTaskTemplateService patientTaskTemplateService,
                                    LocationService locationService,
-                                   ConceptService conceptService,
-                                   org.openmrs.api.PatientService openmrsPatientService) {
+                                   ConceptService conceptService) {
         this.taskTemplateService = taskTemplateService;
         this.patientTaskTemplateService = patientTaskTemplateService;
         this.locationService = locationService;
         this.conceptService = conceptService;
-        this.openmrsPatientService = openmrsPatientService;
     }
 
     @RequestMapping(method = RequestMethod.POST)
@@ -215,7 +212,7 @@ public class TaskTemplateController extends BaseRestController {
                 return new ResponseEntity<>(errorPayload("Task template not found"), NOT_FOUND);
             }
 
-            Patient patient = openmrsPatientService.getPatientByUuid(request.getPatientUuid());
+            Patient patient = Context.getPatientService().getPatientByUuid(request.getPatientUuid());
             if (patient == null) {
                 return new ResponseEntity<>(errorPayload("Patient not found"), BAD_REQUEST);
             }
