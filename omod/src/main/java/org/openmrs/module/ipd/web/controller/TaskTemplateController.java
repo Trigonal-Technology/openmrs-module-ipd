@@ -7,9 +7,12 @@ import org.openmrs.Location;
 import org.openmrs.api.ConceptService;
 import org.openmrs.api.LocationService;
 import org.openmrs.api.context.Context;
-import org.openmrs.module.ipd.api.model.Task;
+import org.openmrs.Patient;
+import org.openmrs.module.ipd.api.model.PatientTaskTemplate;
 import org.openmrs.module.ipd.api.model.TaskTemplate;
+import org.openmrs.module.ipd.api.service.PatientTaskTemplateService;
 import org.openmrs.module.ipd.api.service.TaskTemplateService;
+import org.openmrs.module.ipd.web.contract.ApplyTemplateRequest;
 import org.openmrs.module.ipd.web.contract.TaskTemplateRequest;
 import org.openmrs.module.ipd.web.contract.TaskTemplateResponse;
 import org.openmrs.module.ipd.web.util.PrivilegeConstants;
@@ -38,15 +41,21 @@ import static org.springframework.http.HttpStatus.*;
 public class TaskTemplateController extends BaseRestController {
 
     private final TaskTemplateService taskTemplateService;
+    private final PatientTaskTemplateService patientTaskTemplateService;
     private final LocationService locationService;
     private final ConceptService conceptService;
+    private final org.openmrs.api.PatientService openmrsPatientService;
 
-    public TaskTemplateController(TaskTemplateService taskTemplateService, 
+    public TaskTemplateController(TaskTemplateService taskTemplateService,
+                                   PatientTaskTemplateService patientTaskTemplateService,
                                    LocationService locationService,
-                                   ConceptService conceptService) {
+                                   ConceptService conceptService,
+                                   org.openmrs.api.PatientService openmrsPatientService) {
         this.taskTemplateService = taskTemplateService;
+        this.patientTaskTemplateService = patientTaskTemplateService;
         this.locationService = locationService;
         this.conceptService = conceptService;
+        this.openmrsPatientService = openmrsPatientService;
     }
 
     @RequestMapping(method = RequestMethod.POST)
@@ -185,6 +194,48 @@ public class TaskTemplateController extends BaseRestController {
             return new ResponseEntity<>(response, OK);
         } catch (Exception e) {
             log.error("Error while voiding task template", e);
+            return new ResponseEntity<>(errorPayload(e.getMessage()), BAD_REQUEST);
+        }
+    }
+
+    @RequestMapping(value = "/{templateUuid}/apply", method = RequestMethod.POST)
+    @ResponseBody
+    public ResponseEntity<Object> applyTemplate(
+            @PathVariable("templateUuid")
+            @Pattern(regexp = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", message = "Invalid UUID format")
+            String templateUuid,
+            @Valid @RequestBody ApplyTemplateRequest request) {
+        try {
+            if (!hasPrivilege(PrivilegeConstants.APPLY_TASK_TEMPLATES)) {
+                return forbidden(PrivilegeConstants.APPLY_TASK_TEMPLATES);
+            }
+
+            TaskTemplate template = taskTemplateService.getTaskTemplateByUuid(templateUuid);
+            if (template == null) {
+                return new ResponseEntity<>(errorPayload("Task template not found"), NOT_FOUND);
+            }
+
+            Patient patient = openmrsPatientService.getPatientByUuid(request.getPatientUuid());
+            if (patient == null) {
+                return new ResponseEntity<>(errorPayload("Patient not found"), BAD_REQUEST);
+            }
+
+            Location ward = locationService.getLocationByUuid(request.getWardUuid());
+            if (ward == null) {
+                return new ResponseEntity<>(errorPayload("Ward not found"), BAD_REQUEST);
+            }
+
+            PatientTaskTemplate patientTemplate = patientTaskTemplateService.applyTemplateToPatient(
+                    template, patient, ward);
+
+            SimpleObject response = new SimpleObject();
+            response.put("message", "Template applied successfully");
+            response.put("patientTaskTemplateUuid", patientTemplate.getUuid());
+            response.put("patientUuid", patient.getUuid());
+            response.put("wardUuid", ward.getUuid());
+            return new ResponseEntity<>(response, OK);
+        } catch (Exception e) {
+            log.error("Error while applying template", e);
             return new ResponseEntity<>(errorPayload(e.getMessage()), BAD_REQUEST);
         }
     }
