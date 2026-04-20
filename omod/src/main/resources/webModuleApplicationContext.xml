@@ -14,6 +14,13 @@
 	<context:component-scan base-package="org.openmrs.module.ipd.web"/>
 
 	<!--
+	  Path Traversal Security Filter
+	  Blocks path traversal attacks (../../../etc/passwd) before they reach controllers.
+	-->
+	<bean id="pathTraversalFilter"
+	      class="org.openmrs.module.ipd.web.security.PathTraversalFilter"/>
+
+	<!--
 	  AOP advisor that replaces emrapi's EncounterTransactionHandler hook.
 	  After EncounterService.saveEncounter() succeeds, IPDEncounterServiceAdvice
 	  calls IPDTransactionHandler.afterSave(Encounter) to trigger IPD event and

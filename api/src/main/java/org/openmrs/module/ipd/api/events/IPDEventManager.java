@@ -23,6 +23,12 @@ public class IPDEventManager {
                 return IPDEventType.SHIFT_START_TASK;
             case "ROLLOVER_TASK":
                 return IPDEventType.ROLLOVER_TASK;
+            case "GENERATE_TASK_INSTANCES":
+                return IPDEventType.GENERATE_TASK_INSTANCES;
+            case "PATIENT_DISCHARGE":
+                return IPDEventType.PATIENT_DISCHARGE;
+            case "ARCHIVE_CANCELLED_TASKS":
+                return IPDEventType.ARCHIVE_CANCELLED_TASKS;
             default:
                 return null;
         }

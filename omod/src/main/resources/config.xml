@@ -67,6 +67,45 @@
 		<name>Edit Tasks</name>
 		<description>Allows to edit IPD nursing/non-medication tasks</description>
 	</privilege>
+
+	<!-- Nursing Task Management Privileges -->
+	<privilege>
+		<name>Manage Task Templates</name>
+		<description>Allows to create, update and void nursing task templates</description>
+	</privilege>
+	<privilege>
+		<name>Get Task Templates</name>
+		<description>Allows to view nursing task templates</description>
+	</privilege>
+	<privilege>
+		<name>Apply Task Templates</name>
+		<description>Allows to apply task templates to patients</description>
+	</privilege>
+	<privilege>
+		<name>Manage Task Instances</name>
+		<description>Allows to create and manage nursing task instances</description>
+	</privilege>
+	<privilege>
+		<name>Get Task Instances</name>
+		<description>Allows to view nursing task instances</description>
+	</privilege>
+	<privilege>
+		<name>Complete Tasks</name>
+		<description>Allows to complete nursing tasks</description>
+	</privilege>
+	<privilege>
+		<name>Acknowledge Tasks</name>
+		<description>Allows doctors to acknowledge task completion (for billing)</description>
+	</privilege>
+	<privilege>
+		<name>Manage Task Cleanup</name>
+		<description>Allows to cleanup and archive cancelled tasks</description>
+	</privilege>
+	<privilege>
+		<name>View Task Reports</name>
+		<description>Allows to view task completion and billing reports</description>
+	</privilege>
+
 	<activator>org.openmrs.module.ipd.api.IPDActivator</activator>
 </module>
 

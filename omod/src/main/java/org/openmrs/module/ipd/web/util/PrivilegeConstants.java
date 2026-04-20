@@ -23,4 +23,24 @@ public class PrivilegeConstants {
     public static final String ADD_TASKS = "Add Tasks";
     @AddOnStartup(description = "Edit IPD nursing/non-medication tasks")
     public static final String EDIT_TASKS = "Edit Tasks";
+
+    // Nursing Task Management Privileges
+    @AddOnStartup(description = "Manage nursing task templates")
+    public static final String MANAGE_TASK_TEMPLATES = "Manage Task Templates";
+    @AddOnStartup(description = "Get nursing task templates")
+    public static final String GET_TASK_TEMPLATES = "Get Task Templates";
+    @AddOnStartup(description = "Apply task templates to patients")
+    public static final String APPLY_TASK_TEMPLATES = "Apply Task Templates";
+    @AddOnStartup(description = "Manage nursing task instances")
+    public static final String MANAGE_TASK_INSTANCES = "Manage Task Instances";
+    @AddOnStartup(description = "Get nursing task instances")
+    public static final String GET_TASK_INSTANCES = "Get Task Instances";
+    @AddOnStartup(description = "Complete nursing tasks")
+    public static final String COMPLETE_TASKS = "Complete Tasks";
+    @AddOnStartup(description = "Acknowledge tasks as doctor")
+    public static final String ACKNOWLEDGE_TASKS = "Acknowledge Tasks";
+    @AddOnStartup(description = "Manage task cleanup and archival")
+    public static final String MANAGE_TASK_CLEANUP = "Manage Task Cleanup";
+    @AddOnStartup(description = "View task reports")
+    public static final String VIEW_TASK_REPORTS = "View Task Reports";
 }
