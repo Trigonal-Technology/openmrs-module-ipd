@@ -7,6 +7,7 @@ import org.openmrs.api.OpenmrsService;
 import org.openmrs.module.ipd.api.model.PatientTaskTemplate;
 import org.openmrs.module.ipd.api.model.TaskTemplate;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface PatientTaskTemplateService extends OpenmrsService {
@@ -30,7 +31,8 @@ public interface PatientTaskTemplateService extends OpenmrsService {
     List<PatientTaskTemplate> getAllActivePatientTaskTemplates();
 
     @Authorized({ "Apply Task Templates" })
-    PatientTaskTemplate applyTemplateToPatient(TaskTemplate template, Patient patient, Location ward);
+    PatientTaskTemplate applyTemplateToPatient(TaskTemplate template, Patient patient, Location ward, 
+                                                  LocalDateTime startDate, LocalDateTime endDate);
 
     @Authorized({ "Apply Task Templates", "Manage Task Cleanup" })
     void deactivateForPatient(Patient patient);

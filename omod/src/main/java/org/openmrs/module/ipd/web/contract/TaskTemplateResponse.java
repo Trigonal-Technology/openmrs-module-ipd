@@ -3,7 +3,9 @@ package org.openmrs.module.ipd.web.contract;
 import lombok.Builder;
 import lombok.Getter;
 import org.openmrs.module.ipd.api.model.TaskTemplate;
+import org.openmrs.module.ipd.api.model.TaskTemplateSchedule;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -20,8 +22,9 @@ public class TaskTemplateResponse {
     private Integer estimatedDurationMinutes;
     private Map<String, Object> defaultAssigneeRole;
     private boolean active;
+    private RecurrenceResponse recurrence;
 
-    public static TaskTemplateResponse from(TaskTemplate template) {
+    public static TaskTemplateResponse from(TaskTemplate template, TaskTemplateSchedule schedule) {
         Map<String, Object> taskTypeRef = null;
         if (template.getTaskType() != null) {
             taskTypeRef = new HashMap<>();
@@ -43,6 +46,19 @@ public class TaskTemplateResponse {
             roleRef.put("display", template.getDefaultAssigneeRole().getDisplayString());
         }
 
+        RecurrenceResponse recurrenceResponse = null;
+        if (schedule != null) {
+            recurrenceResponse = RecurrenceResponse.builder()
+                    .type(schedule.getRecurrenceType() != null ? schedule.getRecurrenceType().name() : null)
+                    .interval(schedule.getRecurrenceInterval())
+                    .startDate(schedule.getStartDate() != null ? schedule.getStartDate().toString() : null)
+                    .endDate(schedule.getEndDate() != null ? schedule.getEndDate().toString() : null)
+                    .activeTimes(schedule.getActiveTimes() != null ? schedule.getActiveTimes().split(",") : null)
+                    .daysOfWeek(schedule.getDaysOfWeek() != null ? 
+                            Arrays.stream(schedule.getDaysOfWeek().split(",")).map(Integer::parseInt).toArray(Integer[]::new) : null)
+                    .build();
+        }
+
         return TaskTemplateResponse.builder()
                 .uuid(template.getUuid())
                 .name(template.getName())
@@ -53,6 +69,18 @@ public class TaskTemplateResponse {
                 .estimatedDurationMinutes(template.getEstimatedDurationMinutes())
                 .defaultAssigneeRole(roleRef)
                 .active(template.isActive())
+                .recurrence(recurrenceResponse)
                 .build();
+    }
+
+    @Getter
+    @Builder
+    public static class RecurrenceResponse {
+        private String type;
+        private Integer interval;
+        private String startDate;
+        private String endDate;
+        private String[] activeTimes;
+        private Integer[] daysOfWeek;
     }
 }

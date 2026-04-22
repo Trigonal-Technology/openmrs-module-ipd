@@ -57,12 +57,14 @@ public class PatientTaskTemplateServiceImpl extends BaseOpenmrsService implement
     }
 
     @Override
-    public PatientTaskTemplate applyTemplateToPatient(TaskTemplate template, Patient patient, Location ward) {
+    public PatientTaskTemplate applyTemplateToPatient(TaskTemplate template, Patient patient, Location ward,
+                                                        LocalDateTime startDate, LocalDateTime endDate) {
         PatientTaskTemplate patientTaskTemplate = new PatientTaskTemplate();
         patientTaskTemplate.setPatient(patient);
         patientTaskTemplate.setTemplate(template);
         patientTaskTemplate.setWard(ward);
-        patientTaskTemplate.setStartDate(LocalDateTime.now());
+        patientTaskTemplate.setStartDate(startDate != null ? startDate : LocalDateTime.now());
+        patientTaskTemplate.setEndDate(endDate);
         patientTaskTemplate.setActive(true);
         return patientTaskTemplateDAO.savePatientTaskTemplate(patientTaskTemplate);
     }

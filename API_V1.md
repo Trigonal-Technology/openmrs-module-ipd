@@ -3,7 +3,7 @@
 **Environment:** localhost/openmrs (Docker)  
 **Base URL:** `http://localhost/openmrs/ws/rest/v1`  
 **Module Version:** 1.2.0-nidan-SNAPSHOT  
-**Last Updated:** 2024-04-20  
+**Last Updated:** 2024-04-20 (14:00 UTC)  
 
 ---
 
@@ -34,18 +34,31 @@ All APIs require Basic Authentication.
 | includeGlobal | boolean | No | Include global templates (default: true) |
 | activeOnly | boolean | No | Only active templates (default: true) |
 
-**Live Test Result:**
+**Live Test:**
 ```bash
-curl -u admin:Admin123 http://localhost/openmrs/ws/rest/v1/ipd/task-templates
+curl -u admin:Admin123 \
+  http://localhost/openmrs/ws/rest/v1/ipd/task-templates
 ```
 
 **Response (200 OK):**
 ```json
 {
-  "results": []
+  "results": [
+    {
+      "uuid": "ab557d0a-b8aa-4506-b656-a8986d269f9f",
+      "name": "Doctor consultation",
+      "description": "Daily doctor consultation visit at 10:00 AM",
+      "taskType": {
+        "display": "Medication Administration Status",
+        "uuid": "03a526f9-3730-11f1-b0ce-16b43c788dba"
+      },
+      "ward": null,
+      "priority": "ROUTINE",
+      "active": true
+    }
+  ]
 }
 ```
-*Note: Empty array indicates no templates exist yet. API is working correctly.*
 
 ---
 
@@ -58,19 +71,42 @@ curl -u admin:Admin123 http://localhost/openmrs/ws/rest/v1/ipd/task-templates
 **Request Body:**
 ```json
 {
-  "name": "Morning Vital Signs",
-  "description": "Check BP, temperature, pulse, respiration",
-  "taskTypeUuid": "3d1f8b77-0c6d-4e4b-9a7f-2e1c5d8b9f0a",
+  "name": "Doctor consultation",
+  "description": "Daily doctor consultation visit at 10:00 AM",
+  "taskTypeUuid": "03a526f9-3730-11f1-b0ce-16b43c788dba",
   "priority": "ROUTINE",
-  "wardUuid": "87654321-4321-4321-4321-210987654321",
   "active": true,
   "recurrence": {
     "recurrenceType": "DAILY",
     "recurrenceInterval": 1,
-    "startDate": "2024-04-20T08:00:00",
-    "endDate": "2024-04-30T08:00:00",
-    "timesOfDay": ["08:00", "14:00", "20:00"]
+    "startDate": "2024-04-20T10:00:00",
+    "endDate": "2024-04-30T10:00:00",
+    "timesOfDay": ["10:00"]
   }
+}
+```
+
+**Live Test:**
+```bash
+curl -X POST -u admin:Admin123 \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Doctor consultation","description":"Daily doctor consultation visit at 10:00 AM","taskTypeUuid":"03a526f9-3730-11f1-b0ce-16b43c788dba","priority":"ROUTINE","active":true,"recurrence":{"recurrenceType":"DAILY","recurrenceInterval":1,"startDate":"2024-04-20T10:00:00","endDate":"2024-04-30T10:00:00","timesOfDay":["10:00"]}}' \
+  http://localhost/openmrs/ws/rest/v1/ipd/task-templates
+```
+
+**Response (201 Created):**
+```json
+{
+  "uuid": "ab557d0a-b8aa-4506-b656-a8986d269f9f",
+  "name": "Doctor consultation",
+  "description": "Daily doctor consultation visit at 10:00 AM",
+  "taskType": {
+    "display": "Medication Administration Status",
+    "uuid": "03a526f9-3730-11f1-b0ce-16b43c788dba"
+  },
+  "ward": null,
+  "priority": "ROUTINE",
+  "active": true
 }
 ```
 
@@ -200,15 +236,39 @@ curl -X DELETE -u admin:Admin123 \
 **Request Body:**
 ```json
 {
-  "patientUuid": "patient-uuid-123",
-  "wardUuid": "ward-uuid-456",
-  "startDate": "2024-04-20T00:00:00",
-  "customizations": {
-    "priority": "HIGH",
-    "notes": "Patient requires frequent monitoring"
-  }
+  "patientUuid": "2513658e-f722-4094-ae67-6059b6773ad1",
+  "wardUuid": "ba685651-ed3b-4e63-9b35-78893060758a"
 }
 ```
+
+**Field Descriptions:**
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| patientUuid | string | Yes | Valid patient UUID |
+| wardUuid | string | Yes | Valid ward/location UUID |
+
+**Live Test:**
+```bash
+curl -X POST -u admin:Admin123 \
+  -H "Content-Type: application/json" \
+  -d '{"patientUuid":"2513658e-f722-4094-ae67-6059b6773ad1","wardUuid":"ba685651-ed3b-4e63-9b35-78893060758a"}' \
+  http://localhost/openmrs/ws/rest/v1/ipd/task-templates/ab557d0a-b8aa-4506-b656-a8986d269f9f/apply
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "Template applied successfully",
+  "patientTaskTemplateUuid": "generated-uuid-here",
+  "patientUuid": "2513658e-f722-4094-ae67-6059b6773ad1",
+  "wardUuid": "ba685651-ed3b-4e63-9b35-78893060758a"
+}
+```
+
+**Error Responses:**
+- `404 Not Found`: Template not found
+- `400 Bad Request`: Patient or ward not found, or invalid UUID format
+- `403 Forbidden`: Missing `Apply Task Templates` privilege
 
 ---
 

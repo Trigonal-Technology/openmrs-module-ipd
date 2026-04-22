@@ -9,8 +9,11 @@ import org.openmrs.api.LocationService;
 import org.openmrs.api.context.Context;
 import org.openmrs.Patient;
 import org.openmrs.module.ipd.api.model.PatientTaskTemplate;
+import org.openmrs.module.ipd.api.model.RecurrenceType;
 import org.openmrs.module.ipd.api.model.TaskTemplate;
+import org.openmrs.module.ipd.api.model.TaskTemplateSchedule;
 import org.openmrs.module.ipd.api.service.PatientTaskTemplateService;
+import org.openmrs.module.ipd.api.service.TaskTemplateScheduleService;
 import org.openmrs.module.ipd.api.service.TaskTemplateService;
 import org.openmrs.module.ipd.web.contract.ApplyTemplateRequest;
 import org.openmrs.module.ipd.web.contract.TaskTemplateRequest;
@@ -28,8 +31,10 @@ import javax.validation.Valid;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Pattern;
 import javax.validation.constraints.Size;
+import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.springframework.http.HttpStatus.*;
@@ -42,15 +47,18 @@ public class TaskTemplateController extends BaseRestController {
 
     private final TaskTemplateService taskTemplateService;
     private final PatientTaskTemplateService patientTaskTemplateService;
+    private final TaskTemplateScheduleService taskTemplateScheduleService;
     private final LocationService locationService;
     private final ConceptService conceptService;
 
     public TaskTemplateController(TaskTemplateService taskTemplateService,
                                    PatientTaskTemplateService patientTaskTemplateService,
+                                   TaskTemplateScheduleService taskTemplateScheduleService,
                                    LocationService locationService,
                                    ConceptService conceptService) {
         this.taskTemplateService = taskTemplateService;
         this.patientTaskTemplateService = patientTaskTemplateService;
+        this.taskTemplateScheduleService = taskTemplateScheduleService;
         this.locationService = locationService;
         this.conceptService = conceptService;
     }
@@ -102,7 +110,17 @@ public class TaskTemplateController extends BaseRestController {
             template.setActive(true);
 
             TaskTemplate saved = taskTemplateService.saveTaskTemplate(template);
-            return new ResponseEntity<>(TaskTemplateResponse.from(saved), OK);
+
+            // Create schedule if recurrence is provided
+            TaskTemplateSchedule schedule = null;
+            if (request.getRecurrence() != null) {
+                schedule = createScheduleFromRequest(saved, request.getRecurrence());
+                if (schedule != null) {
+                    taskTemplateScheduleService.saveTaskTemplateSchedule(schedule);
+                }
+            }
+
+            return new ResponseEntity<>(TaskTemplateResponse.from(saved, schedule), OK);
         } catch (Exception e) {
             log.error("Error while creating task template", e);
             return new ResponseEntity<>(errorPayload(e.getMessage()), BAD_REQUEST);
@@ -129,7 +147,7 @@ public class TaskTemplateController extends BaseRestController {
             }
 
             List<TaskTemplateResponse> results = templates.stream()
-                    .map(TaskTemplateResponse::from)
+                    .map(t -> TaskTemplateResponse.from(t, getScheduleForTemplate(t)))
                     .collect(Collectors.toList());
             
             SimpleObject response = new SimpleObject();
@@ -157,9 +175,44 @@ public class TaskTemplateController extends BaseRestController {
                 return new ResponseEntity<>(errorPayload("Task template not found"), NOT_FOUND);
             }
 
-            return new ResponseEntity<>(TaskTemplateResponse.from(template), OK);
+            return new ResponseEntity<>(TaskTemplateResponse.from(template, getScheduleForTemplate(template)), OK);
         } catch (Exception e) {
             log.error("Error while getting task template", e);
+            return new ResponseEntity<>(errorPayload(e.getMessage()), BAD_REQUEST);
+        }
+    }
+
+    @RequestMapping(value = "/{templateUuid}", method = RequestMethod.PATCH)
+    @ResponseBody
+    public ResponseEntity<Object> toggleTaskTemplateActive(
+            @PathVariable("templateUuid")
+            @Pattern(regexp = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", message = "Invalid UUID format")
+            String templateUuid,
+            @RequestBody Map<String, Object> payload) {
+        try {
+            if (!hasPrivilege(PrivilegeConstants.MANAGE_TASK_TEMPLATES)) {
+                return forbidden(PrivilegeConstants.MANAGE_TASK_TEMPLATES);
+            }
+
+            TaskTemplate template = taskTemplateService.getTaskTemplateByUuid(templateUuid);
+            if (template == null) {
+                return new ResponseEntity<>(errorPayload("Task template not found"), NOT_FOUND);
+            }
+
+            Object activeValue = payload.get("active");
+            if (activeValue == null) {
+                return new ResponseEntity<>(errorPayload("'active' field is required"), BAD_REQUEST);
+            }
+
+            boolean active = Boolean.parseBoolean(activeValue.toString());
+            template.setActive(active);
+            template.setDateChanged(new Date());
+            template.setChangedBy(Context.getAuthenticatedUser());
+
+            TaskTemplate saved = taskTemplateService.saveTaskTemplate(template);
+            return new ResponseEntity<>(TaskTemplateResponse.from(saved, getScheduleForTemplate(saved)), OK);
+        } catch (Exception e) {
+            log.error("Error while toggling task template active status", e);
             return new ResponseEntity<>(errorPayload(e.getMessage()), BAD_REQUEST);
         }
     }
@@ -222,8 +275,18 @@ public class TaskTemplateController extends BaseRestController {
                 return new ResponseEntity<>(errorPayload("Ward not found"), BAD_REQUEST);
             }
 
+            LocalDateTime startDate = LocalDateTime.now();
+            if (request.getStartDate() != null) {
+                startDate = LocalDateTime.parse(request.getStartDate());
+            }
+            
+            LocalDateTime endDate = null;
+            if (request.getEndDate() != null) {
+                endDate = LocalDateTime.parse(request.getEndDate());
+            }
+            
             PatientTaskTemplate patientTemplate = patientTaskTemplateService.applyTemplateToPatient(
-                    template, patient, ward);
+                    template, patient, ward, startDate, endDate);
 
             SimpleObject response = new SimpleObject();
             response.put("message", "Template applied successfully");
@@ -239,6 +302,38 @@ public class TaskTemplateController extends BaseRestController {
 
     private ResponseEntity<Object> forbidden(String privilege) {
         return new ResponseEntity<>(errorPayload("User doesn't have the following privilege: " + privilege), FORBIDDEN);
+    }
+
+    private TaskTemplateSchedule getScheduleForTemplate(TaskTemplate template) {
+        List<TaskTemplateSchedule> schedules = taskTemplateScheduleService.getSchedulesByTemplate(template);
+        return schedules.isEmpty() ? null : schedules.get(0);
+    }
+
+    private TaskTemplateSchedule createScheduleFromRequest(TaskTemplate template, TaskTemplateRequest.RecurrenceRequest recurrence) {
+        try {
+            TaskTemplateSchedule schedule = new TaskTemplateSchedule();
+            schedule.setTemplate(template);
+            schedule.setRecurrenceType(RecurrenceType.valueOf(recurrence.getType()));
+            schedule.setRecurrenceInterval(recurrence.getInterval() != null ? recurrence.getInterval() : 1);
+            schedule.setStartDate(LocalDateTime.parse(recurrence.getStartDate() != null ? recurrence.getStartDate() : LocalDateTime.now().toString()));
+            if (recurrence.getEndDate() != null) {
+                schedule.setEndDate(LocalDateTime.parse(recurrence.getEndDate()));
+            }
+            if (recurrence.getActiveTimes() != null && recurrence.getActiveTimes().length > 0) {
+                schedule.setActiveTimes(String.join(",", recurrence.getActiveTimes()));
+            }
+            if (recurrence.getDaysOfWeek() != null && recurrence.getDaysOfWeek().length > 0) {
+                schedule.setDaysOfWeek(String.join(",", java.util.Arrays.stream(recurrence.getDaysOfWeek())
+                    .map(String::valueOf).collect(java.util.stream.Collectors.toList())));
+            }
+            schedule.setActive(true);
+            schedule.setCreator(Context.getAuthenticatedUser());
+            schedule.setDateCreated(new Date());
+            return schedule;
+        } catch (Exception e) {
+            log.error("Error creating schedule from request", e);
+            return null;
+        }
     }
 
     private SimpleObject errorPayload(String message) {
