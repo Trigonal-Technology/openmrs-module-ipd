@@ -2,7 +2,7 @@ package org.openmrs.module.ipd.api.events.handler.impl;
 
 import org.openmrs.module.ipd.api.events.handler.IPDEventHandler;
 import org.openmrs.module.ipd.api.events.model.IPDEvent;
-import org.openmrs.module.ipd.api.service.TaskInstanceService;
+import org.openmrs.module.ipd.api.service.TaskService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,7 +24,7 @@ public class ArchiveCancelledTasksEventHandler implements IPDEventHandler {
     private static final int DEFAULT_RETENTION_DAYS = 30;
 
     @Autowired
-    private TaskInstanceService taskInstanceService;
+    private TaskService taskService;
 
     @Value("${nidan.ipd.archiveRetentionDays:30}")
     private int retentionDays;
@@ -37,9 +37,9 @@ public class ArchiveCancelledTasksEventHandler implements IPDEventHandler {
         try {
             LocalDateTime archiveBefore = LocalDateTime.now().minusDays(retentionDays);
             
-            int archivedCount = taskInstanceService.archiveCancelledInstances(archiveBefore);
+            int archivedCount = taskService.archiveCancelledTasks(archiveBefore);
             
-            log.info("Archived {} cancelled task instances older than {}", archivedCount, archiveBefore);
+            log.info("Archived {} cancelled tasks older than {}", archivedCount, archiveBefore);
         } catch (Exception e) {
             log.error("Error while archiving cancelled tasks", e);
         }

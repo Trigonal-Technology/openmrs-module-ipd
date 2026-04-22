@@ -5,6 +5,7 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import org.openmrs.BaseChangeableOpenmrsData;
 import org.openmrs.Concept;
+import org.openmrs.Location;
 import org.openmrs.Patient;
 
 import javax.persistence.*;
@@ -74,6 +75,14 @@ public class Task extends BaseChangeableOpenmrsData {
 
 	@Column(name = "notes", length = 2048)
 	private String notes;
+
+	@ManyToOne(optional = true)
+	@JoinColumn(name = "task_template_id")
+	private TaskTemplate taskTemplate;
+
+	@ManyToOne(optional = true)
+	@JoinColumn(name = "ward_id")
+	private Location ward;
 
 	@Override
 	public Integer getId() {

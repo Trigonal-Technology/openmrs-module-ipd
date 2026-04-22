@@ -112,7 +112,7 @@ public class PatientTaskTemplateServiceImplTest {
         Mockito.when(patientTaskTemplateDAO.savePatientTaskTemplate(Mockito.any(PatientTaskTemplate.class)))
                 .thenReturn(savedTemplate);
 
-        PatientTaskTemplate result = patientTaskTemplateService.applyTemplateToPatient(template, patient, ward);
+        PatientTaskTemplate result = patientTaskTemplateService.applyTemplateToPatient(template, patient, ward, LocalDateTime.now(), null);
 
         assertNotNull(result);
         assertTrue(result.isActive());

@@ -1,606 +1,402 @@
-# Nursing Task Management API - Live Documentation
+# IPD REST API (v1)
 
-**Environment:** localhost/openmrs (Docker)  
 **Base URL:** `http://localhost/openmrs/ws/rest/v1`  
-**Module Version:** 1.2.0-nidan-SNAPSHOT  
-**Last Updated:** 2024-04-20 (14:00 UTC)  
+**Module:** `bahmni-ipd`  
+**Version:** `1.2.0-nidan-SNAPSHOT`  
+**Last updated:** 2026-04-15  
+
+All paths below are relative to the base URL unless noted.
 
 ---
 
 ## Authentication
 
-All APIs require Basic Authentication.
+Use HTTP Basic Auth (same as standard OpenMRS REST).
 
-**Default Credentials (Docker):**
-- Username: `admin`
-- Password: `Admin123`
-
-**Header:** `Authorization: Basic YWRtaW46QWRtaW4xMjM=`
+**Example header:** `Authorization: Basic <base64(username:password)>`
 
 ---
 
-## 1. Task Templates API
+## Conventions
 
-### 1.1 List Task Templates
-
-**Endpoint:** `GET /ipd/task-templates`
-
-**Required Privilege:** `Get Task Templates`
-
-**Query Parameters:**
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| wardUuid | string | No | Filter by ward location UUID |
-| includeGlobal | boolean | No | Include global templates (default: true) |
-| activeOnly | boolean | No | Only active templates (default: true) |
-
-**Live Test:**
-```bash
-curl -u admin:Admin123 \
-  http://localhost/openmrs/ws/rest/v1/ipd/task-templates
-```
-
-**Response (200 OK):**
-```json
-{
-  "results": [
-    {
-      "uuid": "ab557d0a-b8aa-4506-b656-a8986d269f9f",
-      "name": "Doctor consultation",
-      "description": "Daily doctor consultation visit at 10:00 AM",
-      "taskType": {
-        "display": "Medication Administration Status",
-        "uuid": "03a526f9-3730-11f1-b0ce-16b43c788dba"
-      },
-      "ward": null,
-      "priority": "ROUTINE",
-      "active": true
-    }
-  ]
-}
-```
+- **JSON** request bodies use `Content-Type: application/json`.
+- **UUIDs** in path parameters are validated where the controller uses `@Pattern` (lowercase hex, 8-4-4-4-12).
+- **Errors** are often returned as `{ "error": "message" }` (see [Error handling](#error-handling)).
 
 ---
 
-### 1.2 Create Task Template
+## 1. Task templates
 
-**Endpoint:** `POST /ipd/task-templates`
+**Base path:** `/ipd/task-templates`
 
-**Required Privilege:** `Manage Task Templates`
+### 1.1 List task templates
 
-**Request Body:**
-```json
-{
-  "name": "Doctor consultation",
-  "description": "Daily doctor consultation visit at 10:00 AM",
-  "taskTypeUuid": "03a526f9-3730-11f1-b0ce-16b43c788dba",
-  "priority": "ROUTINE",
-  "active": true,
-  "recurrence": {
-    "recurrenceType": "DAILY",
-    "recurrenceInterval": 1,
-    "startDate": "2024-04-20T10:00:00",
-    "endDate": "2024-04-30T10:00:00",
-    "timesOfDay": ["10:00"]
-  }
-}
-```
+`GET /ipd/task-templates`
 
-**Live Test:**
-```bash
-curl -X POST -u admin:Admin123 \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Doctor consultation","description":"Daily doctor consultation visit at 10:00 AM","taskTypeUuid":"03a526f9-3730-11f1-b0ce-16b43c788dba","priority":"ROUTINE","active":true,"recurrence":{"recurrenceType":"DAILY","recurrenceInterval":1,"startDate":"2024-04-20T10:00:00","endDate":"2024-04-30T10:00:00","timesOfDay":["10:00"]}}' \
-  http://localhost/openmrs/ws/rest/v1/ipd/task-templates
-```
+**Privilege:** `Get Task Templates`
 
-**Response (201 Created):**
-```json
-{
-  "uuid": "ab557d0a-b8aa-4506-b656-a8986d269f9f",
-  "name": "Doctor consultation",
-  "description": "Daily doctor consultation visit at 10:00 AM",
-  "taskType": {
-    "display": "Medication Administration Status",
-    "uuid": "03a526f9-3730-11f1-b0ce-16b43c788dba"
-  },
-  "ward": null,
-  "priority": "ROUTINE",
-  "active": true
-}
-```
+**Query parameters**
 
-**Field Descriptions:**
-| Field | Type | Required | Validation |
-|-------|------|----------|------------|
-| name | string | Yes | 1-100 chars, alphanumeric + spaces + `-_.,()[]` |
-| description | string | No | Max 500 chars |
-| taskTypeUuid | string | Yes | Valid UUID format |
-| priority | enum | Yes | `ROUTINE`, `HIGH`, `ASAP` |
-| wardUuid | string | No | Valid UUID format |
-| active | boolean | No | Default: true |
-| recurrence | object | No | See Recurrence Schema below |
+| Parameter  | Type   | Required | Description |
+|------------|--------|----------|-------------|
+| `wardUuid` | string | No       | If set, filter by ward (location) UUID. If omitted, active templates are listed. |
 
-**Recurrence Schema:**
-| Field | Type | Description |
-|-------|------|-------------|
-| recurrenceType | enum | `HOURLY`, `DAILY`, `WEEKLY` |
-| recurrenceInterval | integer | Every N hours/days/weeks |
-| startDate | string | ISO 8601 format (YYYY-MM-DDTHH:mm:ss) |
-| endDate | string | ISO 8601 format |
-| timesOfDay | array | Times in HH:mm format |
+**Response `200`:** `{ "results": [ TaskTemplateResponse, ... ] }`
 
-**Live Test Results:**
+`TaskTemplateResponse` includes: `uuid`, `name`, `description`, `taskType` `{ uuid, display }`, `ward` (optional), `priority`, `estimatedDurationMinutes`, `defaultAssigneeRole` (optional), `active`, `recurrence` (optional; see below).
 
-✅ **Valid Request:**
-```bash
-curl -X POST -u admin:Admin123 \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Test Template","taskTypeUuid":"3d1f8b77-0c6d-4e4b-9a7f-2e1c5d8b9f0a","priority":"ROUTINE","active":true}' \
-  http://localhost/openmrs/ws/rest/v1/ipd/task-templates
-```
+**Recurrence object (response):** `type`, `interval`, `startDate`, `endDate`, `activeTimes` (string array), `daysOfWeek` (integer array).
 
-**Response:** HTTP 201 Created (with valid concept UUID)
+### 1.2 Create task template
 
-❌ **Invalid UUID:**
-```json
-{"error":"Invalid taskTypeUuid"}
-```
-Response: HTTP 400
+`POST /ipd/task-templates`
 
-❌ **Missing Required Fields:**
-```bash
-curl -X POST -u admin:Admin123 \
-  -H "Content-Type: application/json" \
-  -d '{"active":true}' \
-  http://localhost/openmrs/ws/rest/v1/ipd/task-templates
-```
+**Privilege:** `Manage Task Templates`
 
-**Response:**
-```json
-{
-  "error": "Validation failed",
-  "details": [
-    "Template name is required",
-    "Priority is required"
-  ]
-}
-```
+**Request body** (`TaskTemplateRequest`)
 
-❌ **XSS Attempt Blocked:**
-```bash
-curl -X POST -u admin:Admin123 \
-  -H "Content-Type: application/json" \
-  -d '{"name":"<script>alert(1)</script>","taskTypeUuid":"...","priority":"ROUTINE"}' \
-  http://localhost/openmrs/ws/rest/v1/ipd/task-templates
-```
+| Field                      | Type    | Required | Notes |
+|----------------------------|---------|----------|-------|
+| `name`                     | string  | Yes      | Max 100; pattern allows alphanumerics, spaces, `-_.,()[]` |
+| `description`              | string  | No       | Max 500 |
+| `taskTypeUuid`             | string  | Yes*     | Concept UUID |
+| `priority`                 | enum    | Yes      | `ROUTINE`, `URGENT`, `STAT` (maps to `Task.TaskPriority`) |
+| `wardUuid`                 | string  | No       | Location UUID |
+| `active`                   | boolean | No       | Default `true` |
+| `defaultAssigneeRoleUuid`  | string  | No       | Concept UUID for default assignee role |
+| `estimatedDurationMinutes` | integer | No       | |
+| `recurrence`               | object  | No       | See below |
 
-**Response:** HTTP 400 (Invalid characters in name)
+\*`taskTypeUuid` is required for a valid create; unknown concept → `400` with `Invalid taskTypeUuid`.
 
----
+**Recurrence object (request):** `RecurrenceRequest`
 
-### 1.3 Get Task Template by UUID
+| Field          | Type      | Description |
+|----------------|-----------|-------------|
+| `type`         | string    | Must match `RecurrenceType` enum name (e.g. `DAILY`) |
+| `interval`     | integer   | Default 1 |
+| `startDate`    | string    | ISO local datetime string |
+| `endDate`      | string    | Optional |
+| `activeTimes`  | string[]  | e.g. `["10:00","14:00"]` (stored comma-separated) |
+| `daysOfWeek`   | integer[] | Optional |
 
-**Endpoint:** `GET /ipd/task-templates/{templateUuid}`
+**Response:** `200 OK` with a single `TaskTemplateResponse` (not `201`).
 
-**Required Privilege:** `Get Task Templates`
+### 1.3 Get task template by UUID
 
-**Path Parameters:**
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| templateUuid | string | Template UUID (format: 8-4-4-4-12 hex) |
+`GET /ipd/task-templates/{templateUuid}`
 
-**Live Test - Valid Format:**
-```bash
-curl -u admin:Admin123 \
-  http://localhost/openmrs/ws/rest/v1/ipd/task-templates/12345678-1234-1234-1234-123456789012
-```
+**Privilege:** `Get Task Templates`
 
-**Response:** HTTP 404 Not Found (template doesn't exist)
+**Response:** `200` — one `TaskTemplateResponse`; `404` — not found; `400` — invalid UUID format.
 
-**Live Test - Invalid Format:**
-```bash
-curl -u admin:Admin123 \
-  http://localhost/openmrs/ws/rest/v1/ipd/task-templates/invalid-uuid
-```
+### 1.4 Update template active flag
 
-**Response:** HTTP 400 Bad Request (Invalid UUID format)
+`PATCH /ipd/task-templates/{templateUuid}`
 
----
+**Privilege:** `Manage Task Templates`
 
-### 1.4 Void Task Template
+**Body:** JSON map with `active` (boolean) required.
 
-**Endpoint:** `DELETE /ipd/task-templates/{templateUuid}?reason={reason}`
+**Response:** `200` with updated `TaskTemplateResponse`.
 
-**Required Privilege:** `Manage Task Templates`
+### 1.5 Void task template
 
-**Query Parameters:**
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| reason | string | Yes | 5-255 characters |
+`DELETE /ipd/task-templates/{templateUuid}?reason=...`
 
-**Example:**
-```bash
-curl -X DELETE -u admin:Admin123 \
-  "http://localhost/openmrs/ws/rest/v1/ipd/task-templates/12345678-1234-1234-1234-123456789012?reason=No longer needed"
-```
+**Privilege:** `Manage Task Templates`
 
----
+**Query:** `reason` optional (5–255 chars if provided); default server-side: `"Voided by user"`.
 
-### 1.5 Apply Template to Patient
+**Response:** `200` — `{ "message": "Task template voided successfully" }`.
 
-**Endpoint:** `POST /ipd/task-templates/{templateUuid}/apply`
+### 1.6 Apply template to patient
 
-**Required Privilege:** `Apply Task Templates`
+`POST /ipd/task-templates/{templateUuid}/apply`
 
-**Request Body:**
-```json
-{
-  "patientUuid": "2513658e-f722-4094-ae67-6059b6773ad1",
-  "wardUuid": "ba685651-ed3b-4e63-9b35-78893060758a"
-}
-```
+**Privilege:** `Apply Task Templates`
 
-**Field Descriptions:**
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| patientUuid | string | Yes | Valid patient UUID |
-| wardUuid | string | Yes | Valid ward/location UUID |
+**Body** (`ApplyTemplateRequest`)
 
-**Live Test:**
-```bash
-curl -X POST -u admin:Admin123 \
-  -H "Content-Type: application/json" \
-  -d '{"patientUuid":"2513658e-f722-4094-ae67-6059b6773ad1","wardUuid":"ba685651-ed3b-4e63-9b35-78893060758a"}' \
-  http://localhost/openmrs/ws/rest/v1/ipd/task-templates/ab557d0a-b8aa-4506-b656-a8986d269f9f/apply
-```
+| Field         | Type   | Required | Description |
+|---------------|--------|----------|-------------|
+| `patientUuid` | string | Yes      | Patient UUID |
+| `wardUuid`    | string | Yes      | Ward/location UUID |
+| `startDate`   | string | No       | `yyyy-MM-ddTHH:mm:ss` (local); default now |
+| `endDate`     | string | No       | Same format |
 
-**Response (200 OK):**
+**Response `200`:**
+
 ```json
 {
   "message": "Template applied successfully",
-  "patientTaskTemplateUuid": "generated-uuid-here",
-  "patientUuid": "2513658e-f722-4094-ae67-6059b6773ad1",
-  "wardUuid": "ba685651-ed3b-4e63-9b35-78893060758a"
+  "generatedTasks": 0,
+  "patientTaskTemplateUuid": "...",
+  "patientUuid": "...",
+  "wardUuid": "..."
 }
 ```
 
-**Error Responses:**
-- `404 Not Found`: Template not found
-- `400 Bad Request`: Patient or ward not found, or invalid UUID format
-- `403 Forbidden`: Missing `Apply Task Templates` privilege
+`generatedTasks` is the count from immediate generation for a short window after apply.
 
 ---
 
-## 2. Task Instances API
+## 2. IPD tasks (nursing / non-medication tasks)
 
-### 2.1 List Task Instances
+**Base path:** `/ipd/tasks`  
+These endpoints work with the IPD `Task` model (not the old `/ipd/task-instances` path, which is not present in this module version).
 
-**Endpoint:** `GET /ipd/task-instances`
+### 2.1 List tasks
 
-**Required Privilege:** `Get Task Instances`
+`GET /ipd/tasks?patient={patientUuid}&status={statuses}`
 
-**Query Parameters:**
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| patientUuid | string | Yes* | Filter by patient |
-| wardUuid | string | Yes* | Filter by ward |
-| status | string | No | `SCHEDULED`, `IN_PROGRESS`, `COMPLETED`, `CANCELLED` |
-| from | datetime | No | Start time (ISO 8601) |
-| to | datetime | No | End time (ISO 8601) |
+**Privilege:** `Get Tasks`
 
-*Either patientUuid OR wardUuid is required
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `patient` | Yes      | Patient UUID |
+| `status`  | No       | Comma-separated `TaskStatus` values |
 
-**Live Test:**
-```bash
-curl -u admin:Admin123 \
-  http://localhost/openmrs/ws/rest/v1/ipd/task-instances
-```
+**`TaskStatus` values:** `REQUESTED`, `IN_PROGRESS`, `COMPLETED`, `CANCELLED`
 
-**Response:**
+**Response `200`:** `{ "results": [ TaskResponse, ... ] }`
+
+**`TaskResponse` fields:** `uuid`, `name`, `description`, `intent` (`order` / `proposal`), `status`, `patient` `{ uuid, display }`, `taskType` (optional) `{ uuid, display }`, `executionPeriod` (optional) `{ start, end }` (ISO-8601 instants as strings).
+
+### 2.2 Create task
+
+`POST /ipd/tasks`
+
+**Privilege:** `Add Tasks`
+
+**Body** (`TaskRequest`) — server checks non-empty `name`, `patient.uuid`, and `status`.
+
+| Field              | Type   | Notes |
+|--------------------|--------|-------|
+| `name`             | string | Required |
+| `description`      | string | |
+| `intent`           | string | `ORDER` or `PROPOSAL` (default `ORDER`) |
+| `status`           | string | Required; one of `TaskStatus` |
+| `priority`         | string | `ROUTINE`, `URGENT`, `STAT` (default `ROUTINE`) |
+| `notes`            | string | |
+| `patient`          | object | `{ "uuid": "..." }` required |
+| `taskType`         | object | `{ "uuid": "..." }` optional concept |
+| `executionPeriod`  | object | `{ "start", "end" }` ISO-8601 instant strings |
+
+**Response:** `200` with `TaskResponse`.
+
+**Status transitions** (on update) are restricted: e.g. `REQUESTED` → `IN_PROGRESS` or `CANCELLED`; `IN_PROGRESS` → `COMPLETED` or `CANCELLED`.
+
+### 2.3 Update task
+
+`POST /ipd/tasks/{taskUuid}`
+
+**Privilege:** `Edit Tasks`
+
+**Body** (`TaskUpdateRequest`)
+
+| Field              | Type   | Description |
+|--------------------|--------|---------------|
+| `status`           | string | New status (validated transition) |
+| `notes`            | string | |
+| `executionPeriod`  | object | `start` / `end` instants |
+
+**Response:** `200` with `TaskResponse`; `404` if task not found.
+
+There is **no** `GET /ipd/tasks/{taskUuid}` in the current controller; use list-by-patient or your own storage of UUIDs from create/list responses.
+
+---
+
+## 3. Task acknowledgment (doctor / provider)
+
+**Base path:** `/ipd/tasks` (same as §2; implemented in a separate controller)
+
+### 3.1 Acknowledge completed task
+
+`POST /ipd/tasks/{taskUuid}/acknowledge`
+
+**Body** (`AcknowledgeTaskRequest`)
+
+| Field                   | Type   | Required | Notes |
+|-------------------------|--------|----------|-------|
+| `acknowledgmentMethod`  | string | Yes      | `QR_SCAN`, `NFC_TAP`, `MANUAL_ENTRY`, `BIOMETRIC` (case-insensitive) |
+| `deviceId`              | string | No       | Max 50 |
+| `notes`                 | string | No       | Max 500 |
+
+**Behavior:** Task must be `COMPLETED`; only one acknowledgment per task; current user must resolve to a **Provider** or the call returns `403` with a plain-text body.
+
+**Success `200` (example):**
+
 ```json
 {
-  "error": "Either patientUuid or wardUuid is required"
-}
-```
-Response: HTTP 400
-
----
-
-### 2.2 Create Task Instance
-
-**Endpoint:** `POST /ipd/task-instances`
-
-**Required Privilege:** `Manage Task Instances`
-
-**Request Body:**
-```json
-{
-  "templateUuid": "template-uuid-123",
-  "patientUuid": "patient-uuid-456",
-  "wardUuid": "ward-uuid-789",
-  "name": "Custom Vital Check",
-  "description": "Additional check due to fever",
-  "scheduledTime": "2024-04-20T14:00:00",
-  "priority": "HIGH"
+  "uuid": "...",
+  "taskUuid": "...",
+  "acknowledgedBy": "...",
+  "acknowledgmentTime": "...",
+  "status": "Acknowledged"
 }
 ```
 
-**Validation:**
-- `name`: Required, max 100 chars
-- `patientUuid`: Required, valid UUID
-- `wardUuid`: Required, valid UUID
-- `scheduledTime`: Required, format `YYYY-MM-DDTHH:mm:ss`
-- `priority`: Required, enum value
+**Other statuses:** `404` task not found; `400` not completed; `409` already acknowledged; `500` on server error (plain text).
+
+*Note: `TaskAcknowledgmentController` does not explicitly check the `Acknowledge Tasks` privilege; align server configuration if you need strict RBAC.*
+
+### 3.2 Get acknowledgment for a task
+
+`GET /ipd/tasks/{taskUuid}/acknowledgment`
+
+**Response `200`:** `uuid`, `acknowledgedBy`, `acknowledgmentTime`, `notes`, `billable`.  
+**`404`:** no acknowledgment.
 
 ---
 
-### 2.3 Get Task Instance
+## 4. Wards
 
-**Endpoint:** `GET /ipd/task-instances/{instanceUuid}`
+**Base path:** `/ipd/wards`
 
-**Required Privilege:** `Get Task Instances`
-
-**Path Parameters:**
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| instanceUuid | string | Valid UUID format |
-
-**Live Test - Invalid UUID:**
-```bash
-curl -u admin:Admin123 \
-  http://localhost/openmrs/ws/rest/v1/ipd/task-instances/invalid-uuid
-```
-
-**Response:** HTTP 400 Bad Request
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET`  | `/{wardUuid}/summary?providerUuid=` | Ward summary for dashboard (returns `IPDWardPatientSummaryResponse`) |
+| `GET`  | `/{wardUuid}/patients?offset=&limit=&sortBy=` | Paginated patients in ward |
+| `GET`  | `/{wardUuid}/myPatients?providerUuid=&offset=&limit=&sortBy=` | Patients for a provider in ward |
+| `GET`  | `/{wardUuid}/patients/search?offset=&limit=&searchKeys=&searchValue=&sortBy=` | Search in ward (`searchKeys` is repeatable / list param) |
 
 ---
 
-### 2.4 Start Task
+## 5. Medication schedule
 
-**Endpoint:** `POST /ipd/task-instances/{instanceUuid}/start`
+**Base path:** `/ipd/schedule`
 
-**Required Privilege:** `Complete Tasks`
+| Method | Path | Privileges (typical) |
+|--------|------|------------------------|
+| `POST` | `/type/medication` | `Edit Medication Tasks` — create schedule |
+| `POST` | `/type/medication/edit` | `Edit Medication Tasks` — update schedule |
+| `GET`  | `/type/medication?patientUuid=&startTime=&endTime=&visitUuid=&view=` | `Get Medication Administration` **and** `Get Medication Tasks` — `startTime` / `endTime` are **epoch milliseconds** (UTC) converted server-side |
+| `GET`  | `/type/medication?patientUuid=&serviceType=&orderUuids=` | Same pair of privileges; optional filters |
+| `GET`  | `/type/medication/patientsMedicationSummary?patientUuids=&startTime=&endTime=&includePreviousSlot=&includeSlotDuration=` | Multi-patient summary; epoch millis for time range |
 
-**Example:**
-```bash
-curl -X POST -u admin:Admin123 \
-  http://localhost/openmrs/ws/rest/v1/ipd/task-instances/12345678-1234-1234-1234-123456789012/start
-```
-
----
-
-### 2.5 Complete Task
-
-**Endpoint:** `POST /ipd/task-instances/{instanceUuid}/complete`
-
-**Required Privilege:** `Complete Tasks`
-
-**Request Body:**
-```json
-{
-  "notes": "BP: 120/80, Temp: 98.6F, Pulse: 72",
-  "completedOnBehalfOfProviderUuid": "provider-uuid-123"
-}
-```
-
-**Field Descriptions:**
-| Field | Type | Required | Validation |
-|-------|------|----------|------------|
-| notes | string | No | Max 1000 chars |
-| completedOnBehalfOfProviderUuid | string | Yes | Valid UUID |
+Request/response types: `ScheduleMedicationRequest`, `ScheduleMedicationResponse`, `MedicationSlotResponse`, `MedicationScheduleResponse`, `PatientMedicationSummaryResponse` (see `omod/.../contract/`).
 
 ---
 
-### 2.6 Cancel Task
+## 6. Visit – medications and treatments
 
-**Endpoint:** `POST /ipd/task-instances/{instanceUuid}/cancel?reason={reason}`
+**Base path:** `/ipdVisit/{visitUuid}`
 
-**Required Privilege:** `Manage Task Instances`
+`GET /ipdVisit/{visitUuid}/medication?includes=...`
 
-**Query Parameters:**
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| reason | string | Yes | 5-255 characters |
+**Privileges:** `Get Medication Administration` **and** `Get Medication Tasks`
 
-**Example:**
-```bash
-curl -X POST -u admin:Admin123 \
-  "http://localhost/openmrs/ws/rest/v1/ipd/task-instances/12345678-1234-1234-1234-123456789012/cancel?reason=Patient discharged"
-```
+**Query:** `includes` may include `emergencyMedications` to add emergency med slots to the payload.
+
+**Response:** `IPDTreatmentsResponse` (prescribed orders + optional emergency list).
 
 ---
 
-## 3. Task Acknowledgment API
+## 7. Medication administration (scheduled / ad-hoc)
 
-### 3.1 Acknowledge Task (Doctor)
+**Base path:** `/ipd`
 
-**Endpoint:** `POST /ipd/tasks/{instanceUuid}/acknowledge`
-
-**Required Privilege:** `Acknowledge Tasks`
-
-**Request Body:**
-```json
-{
-  "acknowledgmentMethod": "QR_SCAN",
-  "deviceId": "scanner-device-001",
-  "notes": "Verified and approved for billing",
-  "billable": true,
-  "billingCode": "VITAL-CHECK-001"
-}
-```
-
-**Field Descriptions:**
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| acknowledgmentMethod | enum | Yes | `QR_SCAN`, `NFC_TAP`, `MANUAL_ENTRY`, `BIOMETRIC` |
-| deviceId | string | No | Max 50 chars |
-| notes | string | No | Max 500 chars |
-| billable | boolean | No | Default: true |
-| billingCode | string | No | Billing reference code |
-
-**Case-Insensitive:** Method can be `qr_scan`, `QR_SCAN`, `Qr_Scan`, etc.
+| Method | Path | Privilege |
+|--------|------|-----------|
+| `POST` | `/scheduledMedicationAdministrations` | `Edit Medication Administration` — body: **array** of `MedicationAdministrationRequest` |
+| `POST` | `/adhocMedicationAdministrations` | `Edit adhoc medication tasks` — single `MedicationAdministrationRequest` |
+| `PUT`  | `/adhocMedicationAdministrations/{medicationAdministrationUuid}` | Update ad-hoc (no privilege check in controller — rely on OpenMRS if configured) |
 
 ---
 
-### 3.2 Get Acknowledgment
+## 8. Emergency medications to acknowledge
 
-**Endpoint:** `GET /ipd/tasks/acknowledgments/{acknowledgmentUuid}`
+`GET /ipd/emergencyMedicationsToAcknowledge?providerUuid=&locationUuid=`
 
-**Required Privilege:** `Get Task Instances`
+**Aliases:** `provider_uuid`, `location_uuid` (snake_case) are accepted.
 
----
+**Privilege:** `Get Medication Administration`
 
-### 3.3 Get Task Acknowledgment
+**Required:** `providerUuid` (or `provider_uuid`).
 
-**Endpoint:** `GET /ipd/tasks/{instanceUuid}/acknowledgment`
+**Response `200`:** JSON array of `EmergencyMedicationToAcknowledgeRest`:
 
-**Required Privilege:** `Get Task Instances`
-
----
-
-## 4. Security Features
-
-### ✅ XSS Protection
-All text inputs are HTML-escaped via `sanitize()` method.
-
-**Test:**
-```bash
-curl -X POST -u admin:Admin123 \
-  -H "Content-Type: application/json" \
-  -d '{"name":"<script>alert(1)</script>","taskTypeUuid":"...","priority":"ROUTINE"}' \
-  http://localhost/openmrs/ws/rest/v1/ipd/task-templates
-```
-
-**Result:** HTTP 400 - Invalid characters in name
-
-### ✅ SQL Injection Protection
-Parameterized queries used throughout. String inputs validated against patterns.
-
-### ✅ UUID Validation
-All UUID path variables validated with regex:
-```regex
-^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$
-```
-
-### ✅ Path Traversal Protection
-**Live Test:**
-```bash
-curl -u admin:Admin123 \
-  http://localhost/openmrs/ws/rest/v1/ipd/task-instances/../../../etc/passwd
-```
-
-**Expected:** HTTP 400 (Blocked by PathTraversalFilter)
-
-### ✅ Input Validation
-- `@NotBlank` for required strings
-- `@Size(min, max)` for length limits
-- `@Pattern` for format validation
-- `@Valid` for nested object validation
+- `identifier`, `name`, `gender`, `patient_uuid`, `date_of_birth` (epoch ms)
+- `medication_administration_uuid`, `administered_date_time` (epoch ms)
+- `administered_drug_name`, `administered_dose`, `administered_dose_units`, `administered_route`
+- `performer`: `{ medication_administration_performer_uuid, provider_uuid, display }` (witness / performer details)
+- `visit_uuid`
 
 ---
 
-## 5. Error Handling
+## 9. Care team
 
-### Error Response Format
-```json
-{
-  "error": "Description of the error",
-  "details": [
-    "Specific validation error 1",
-    "Specific validation error 2"
-  ]
-}
-```
+`POST /ipd/careteam/participants`
 
-### HTTP Status Codes
-| Code | Meaning |
+**Body** (`CareTeamRequest`): `patientUuid`, `careTeamParticipantsRequest` (list — see `CareTeamParticipantRequest` in code).
+
+**Response:** `CareTeamResponse` — `200` on success.
+
+---
+
+## 10. FHIR (optional)
+
+R5 **CareTeam** search is exposed via the FHIR2 module: provider `CareTeamFhirResourceProvider` in the `api` module. Use your platform’s standard FHIR base URL, not the `/ws/rest/v1` prefix.
+
+---
+
+## Security notes
+
+- Task template and acknowledgment request DTOs use **HTML escaping** on selected fields where implemented (`sanitize()`).
+- **UUIDs** for templates use regex validation on several routes.
+- Do not rely on undocumented filters (e.g. “PathTraversalFilter”) without verifying your OpenMRS distribution.
+
+---
+
+## Error handling
+
+Common shapes:
+
+- `{ "error": "message" }` — many IPD REST controllers
+- `RestUtil.wrapErrorResponse` — some medication/ward routes (OpenMRS-style wrapper)
+
+| HTTP | Meaning |
 |------|---------|
-| 200 | Success |
-| 201 | Created |
-| 400 | Bad Request (validation error) |
-| 401 | Unauthorized (missing credentials) |
-| 403 | Forbidden (insufficient privileges) |
-| 404 | Not Found |
-| 405 | Method Not Allowed |
-| 415 | Unsupported Media Type |
-| 500 | Internal Server Error |
+| 200  | OK (including some creates that return 200) |
+| 400  | Validation / bad input |
+| 401  | Unauthenticated |
+| 403  | Missing privilege (when checked) or forbidden (e.g. not a provider) |
+| 404  | Not found |
+| 409  | Conflict (e.g. duplicate acknowledgment) |
+| 500  | Server error |
 
 ---
 
-## 6. Privileges Required
+## Privilege quick reference
 
-| Privilege | Description | Endpoints |
-|-----------|-------------|-----------|
-| `Manage Task Templates` | Create, update, void templates | POST /task-templates, DELETE /task-templates/{uuid} |
-| `Get Task Templates` | View templates | GET /task-templates/* |
-| `Apply Task Templates` | Apply templates to patients | POST /task-templates/{uuid}/apply |
-| `Manage Task Instances` | Create and manage instances | POST /task-instances, POST /cancel |
-| `Get Task Instances` | View instances | GET /task-instances/* |
-| `Complete Tasks` | Start and complete tasks | POST /start, POST /complete |
-| `Acknowledge Tasks` | Doctor acknowledgment | POST /acknowledge |
-| `Manage Task Cleanup` | Cancel and archive | POST /cancel |
-| `View Task Reports` | View reports and audit logs | GET /audit-logs, GET /reports/* |
+| Privilege | Used for (summary) |
+|-----------|--------------------|
+| `Get Task Templates` / `Manage Task Templates` / `Apply Task Templates` | §1 |
+| `Get Tasks` / `Add Tasks` / `Edit Tasks` | §2 |
+| `Get Medication Administration` / `Edit Medication Administration` | Med admin, emergency list |
+| `Get Medication Tasks` / `Edit Medication Tasks` / `Delete Medication Tasks` | Schedules, slots |
+| `Edit adhoc medication tasks` | Ad-hoc med admin |
+
+Other constants exist in `PrivilegeConstants` (e.g. `Acknowledge Tasks`, `Get Task Instances`, `Complete Tasks`) for roles and future use; not all are enforced on every controller method—verify in code if you need strict guarantees.
 
 ---
 
-## 7. Quick Reference
+## cURL quick reference
 
-### cURL Examples
-
-**List Templates:**
 ```bash
-curl -u admin:Admin123 \
-  http://localhost/openmrs/ws/rest/v1/ipd/task-templates
+# List task templates
+curl -s -u admin:Admin123 \
+  "http://localhost/openmrs/ws/rest/v1/ipd/task-templates"
+
+# List patient tasks
+curl -s -u admin:Admin123 \
+  "http://localhost/openmrs/ws/rest/v1/ipd/tasks?patient=PATIENT_UUID&status=REQUESTED,IN_PROGRESS"
+
+# Apply template
+curl -s -u admin:Admin123 -H "Content-Type: application/json" \
+  -d '{"patientUuid":"...","wardUuid":"..."}' \
+  "http://localhost/openmrs/ws/rest/v1/ipd/task-templates/TEMPLATE_UUID/apply"
 ```
 
-**Create Template:**
-```bash
-curl -X POST -u admin:Admin123 \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "Vital Signs Check",
-    "taskTypeUuid": "your-concept-uuid",
-    "priority": "ROUTINE"
-  }' \
-  http://localhost/openmrs/ws/rest/v1/ipd/task-templates
-```
-
-**Start Task:**
-```bash
-curl -X POST -u admin:Admin123 \
-  http://localhost/openmrs/ws/rest/v1/ipd/task-instances/{uuid}/start
-```
-
-**Complete Task:**
-```bash
-curl -X POST -u admin:Admin123 \
-  -H "Content-Type: application/json" \
-  -d '{"notes":"Task completed","completedOnBehalfOfProviderUuid":"provider-uuid"}' \
-  http://localhost/openmrs/ws/rest/v1/ipd/task-instances/{uuid}/complete
-```
-
----
-
-## 8. Testing Notes
-
-### Prerequisites for Testing
-1. OpenMRS Docker container running
-2. IPD module installed and started
-3. Valid concept UUIDs for `taskTypeUuid`
-4. Valid patient UUIDs for `patientUuid`
-5. Valid location UUIDs for `wardUuid`
-
-### Sample Valid UUIDs (for testing)
-```
-Patient: 12345678-1234-1234-1234-123456789012
-Ward:    87654321-4321-4321-4321-210987654321
-Concept: 3d1f8b77-0c6d-4e4b-9a7f-2e1c5d8b9f0a
-Provider: aaaaaaaa-1111-2222-3333-444444444444
-```
-
----
-
-**API Status:** ✅ LIVE AND TESTED  
-**Security:** ✅ ALL PROTECTIONS ACTIVE  
-**Ready for:** Production Use
+For authoritative behavior, refer to the Spring controllers under `omod/src/main/java/org/openmrs/module/ipd/web/controller/`.

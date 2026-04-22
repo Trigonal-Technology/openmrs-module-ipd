@@ -16,9 +16,14 @@ import java.util.List;
 public class PatientTaskTemplateServiceImpl extends BaseOpenmrsService implements PatientTaskTemplateService {
 
     private PatientTaskTemplateDAO patientTaskTemplateDAO;
+    private org.openmrs.module.ipd.api.service.TaskService taskService;
 
     public void setPatientTaskTemplateDAO(PatientTaskTemplateDAO patientTaskTemplateDAO) {
         this.patientTaskTemplateDAO = patientTaskTemplateDAO;
+    }
+
+    public void setTaskService(org.openmrs.module.ipd.api.service.TaskService taskService) {
+        this.taskService = taskService;
     }
 
     @Override
@@ -71,6 +76,10 @@ public class PatientTaskTemplateServiceImpl extends BaseOpenmrsService implement
 
     @Override
     public void deactivateForPatient(Patient patient) {
+        List<PatientTaskTemplate> activeTemplates = getActivePatientTaskTemplatesByPatient(patient);
+        for (PatientTaskTemplate template : activeTemplates) {
+            taskService.voidStaleTasks(template, "Patient template deactivated/discharged");
+        }
         patientTaskTemplateDAO.deactivateForPatient(patient);
     }
 }

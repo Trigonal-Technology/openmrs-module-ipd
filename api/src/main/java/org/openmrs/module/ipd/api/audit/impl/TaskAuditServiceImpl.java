@@ -38,16 +38,6 @@ public class TaskAuditServiceImpl implements TaskAuditService {
         log.setPatientUuid(patientUuid);
         log.setDateCreated(new java.util.Date());
         
-        // Try to capture IP and session info if available
-        try {
-            if (Context.getUserContext() != null) {
-                // Note: IP address and session ID would need to be captured from the request context
-                // This is a placeholder for the actual implementation
-            }
-        } catch (Exception e) {
-            // Ignore - audit logging should not fail the main operation
-        }
-        
         return taskAuditLogDAO.saveAuditLog(log);
     }
 
@@ -73,44 +63,33 @@ public class TaskAuditServiceImpl implements TaskAuditService {
     }
 
     @Override
-    public void logInstanceCreated(TaskInstance instance, User createdBy) {
-        String patientUuid = instance.getPatient() != null ? instance.getPatient().getUuid() : null;
-        String details = String.format("Instance created: name=%s, scheduledTime=%s, priority=%s",
-                instance.getName(), instance.getScheduledTime(), instance.getPriority());
-        createAuditLog("INSTANCE_CREATED", "TaskInstance", instance.getUuid(), createdBy, details, patientUuid);
+    public void logTaskCreated(Task task, User createdBy) {
+        String patientUuid = task.getPatient() != null ? task.getPatient().getUuid() : null;
+        String details = String.format("Task created: name=%s, scheduledTime=%s, priority=%s",
+                task.getName(), task.getExecutionStartTime(), task.getPriority());
+        createAuditLog("TASK_CREATED", "Task", task.getUuid(), createdBy, details, patientUuid);
     }
 
     @Override
-    public void logInstanceStatusChanged(TaskInstance instance, TaskInstanceStatus oldStatus,
-                                          TaskInstanceStatus newStatus, User changedBy, String reason) {
-        String patientUuid = instance.getPatient() != null ? instance.getPatient().getUuid() : null;
+    public void logTaskStatusChanged(Task task, Task.TaskStatus oldStatus,
+                                           Task.TaskStatus newStatus, User changedBy, String reason) {
+        String patientUuid = task.getPatient() != null ? task.getPatient().getUuid() : null;
         String details = String.format("Status changed: %s -> %s, reason=%s", oldStatus, newStatus, reason);
-        createAuditLog("STATUS_CHANGED", "TaskInstance", instance.getUuid(), changedBy, details, patientUuid);
-    }
-
-    @Override
-    public void logTaskCompleted(TaskCompletion completion, User completedBy) {
-        TaskInstance instance = completion.getInstance();
-        String patientUuid = instance != null && instance.getPatient() != null 
-                ? instance.getPatient().getUuid() : null;
-        String details = String.format("Task completed by %s at %s, method=%s",
-                completedBy.getUsername(), completion.getCompletionTime(), completion.getCompletionMethod());
-        createAuditLog("TASK_COMPLETED", "TaskInstance", 
-                instance != null ? instance.getUuid() : null, completedBy, details, patientUuid);
+        createAuditLog("STATUS_CHANGED", "Task", task.getUuid(), changedBy, details, patientUuid);
     }
 
     @Override
     public void logTaskAcknowledged(TaskAcknowledgment acknowledgment, User acknowledgedBy) {
-        TaskInstance instance = acknowledgment.getInstance();
-        String patientUuid = instance != null && instance.getPatient() != null 
-                ? instance.getPatient().getUuid() : null;
+        Task task = acknowledgment.getTask();
+        String patientUuid = task != null && task.getPatient() != null 
+                ? task.getPatient().getUuid() : null;
         String details = String.format("Task acknowledged by doctor %s at %s, method=%s, billable=%s",
                 acknowledgment.getAcknowledgedBy() != null ? acknowledgment.getAcknowledgedBy().getName() : "unknown",
                 acknowledgment.getAcknowledgmentTime(),
                 acknowledgment.getAcknowledgmentMethod(),
                 acknowledgment.isBillable());
-        createAuditLog("TASK_ACKNOWLEDGED", "TaskInstance",
-                instance != null ? instance.getUuid() : null, acknowledgedBy, details, patientUuid);
+        createAuditLog("TASK_ACKNOWLEDGED", "Task",
+                task != null ? task.getUuid() : null, acknowledgedBy, details, patientUuid);
     }
 
     @Override
@@ -121,8 +100,8 @@ public class TaskAuditServiceImpl implements TaskAuditService {
 
     @Override
     public void logTasksArchived(int count, User archivedBy) {
-        String details = String.format("Archived %d cancelled task instances", count);
-        createAuditLog("TASKS_ARCHIVED", "TaskInstance", null, archivedBy, details, null);
+        String details = String.format("Archived %d cancelled tasks", count);
+        createAuditLog("TASKS_ARCHIVED", "Task", null, archivedBy, details, null);
     }
 
     @Override
@@ -142,8 +121,8 @@ public class TaskAuditServiceImpl implements TaskAuditService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<TaskAuditLog> getAuditLogsForInstance(String instanceUuid, LocalDateTime from, LocalDateTime to) {
-        return taskAuditLogDAO.getAuditLogsForEntity("TaskInstance", instanceUuid, from, to);
+    public List<TaskAuditLog> getAuditLogsForTask(String taskUuid, LocalDateTime from, LocalDateTime to) {
+        return taskAuditLogDAO.getAuditLogsForEntity("Task", taskUuid, from, to);
     }
 
     @Override

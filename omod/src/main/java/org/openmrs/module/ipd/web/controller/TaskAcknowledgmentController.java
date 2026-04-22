@@ -1,201 +1,121 @@
 package org.openmrs.module.ipd.web.controller;
 
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.StringUtils;
 import org.openmrs.Provider;
 import org.openmrs.api.ProviderService;
 import org.openmrs.api.context.Context;
-import org.openmrs.module.ipd.api.model.AcknowledgmentMethod;
+import org.openmrs.module.ipd.api.model.Task;
 import org.openmrs.module.ipd.api.model.TaskAcknowledgment;
-import org.openmrs.module.ipd.api.model.TaskInstance;
 import org.openmrs.module.ipd.api.service.TaskAcknowledgmentService;
-import org.openmrs.module.ipd.api.service.TaskInstanceService;
+import org.openmrs.module.ipd.api.service.TaskService;
 import org.openmrs.module.ipd.web.contract.AcknowledgeTaskRequest;
-import org.openmrs.module.ipd.web.util.PrivilegeConstants;
-import org.openmrs.module.webservices.rest.SimpleObject;
 import org.openmrs.module.webservices.rest.web.RestConstants;
-import org.openmrs.module.webservices.rest.web.v1_0.controller.BaseRestController;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
-import javax.validation.constraints.Pattern;
-import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
-import static org.springframework.http.HttpStatus.*;
-
-@Controller
-@RequestMapping(value = "/rest/" + RestConstants.VERSION_1 + "/ipd/tasks")
-@Validated
+@RestController
+@RequestMapping("/rest/" + RestConstants.VERSION_1 + "/ipd/tasks")
 @Slf4j
-public class TaskAcknowledgmentController extends BaseRestController {
+public class TaskAcknowledgmentController {
 
-    private final TaskInstanceService taskInstanceService;
-    private final TaskAcknowledgmentService taskAcknowledgmentService;
-    private final ProviderService providerService;
+	@Autowired
+	private TaskService taskService;
 
-    public TaskAcknowledgmentController(TaskInstanceService taskInstanceService,
-                                         TaskAcknowledgmentService taskAcknowledgmentService,
-                                         ProviderService providerService) {
-        this.taskInstanceService = taskInstanceService;
-        this.taskAcknowledgmentService = taskAcknowledgmentService;
-        this.providerService = providerService;
-    }
+	@Autowired
+	private TaskAcknowledgmentService taskAcknowledgmentService;
 
-    @RequestMapping(value = "/{instanceUuid}/acknowledge", method = RequestMethod.POST)
-    @ResponseBody
-    public ResponseEntity<Object> acknowledgeTask(
-            @PathVariable("instanceUuid") 
-            @Pattern(regexp = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", message = "Invalid UUID format") 
-            String instanceUuid,
-            @Valid @RequestBody AcknowledgeTaskRequest request) {
-        try {
-            if (!hasPrivilege(PrivilegeConstants.ACKNOWLEDGE_TASKS)) {
-                return forbidden(PrivilegeConstants.ACKNOWLEDGE_TASKS);
-            }
-            
-            // Sanitize inputs to prevent XSS
-            request.sanitize();
+	@Autowired
+	private ProviderService providerService;
 
-            TaskInstance instance = taskInstanceService.getTaskInstanceByUuid(instanceUuid);
-            if (instance == null) {
-                return new ResponseEntity<>(errorPayload("Task instance not found"), NOT_FOUND);
-            }
+	@PostMapping("/{taskUuid}/acknowledge")
+	public ResponseEntity<?> acknowledgeTask(
+			@PathVariable String taskUuid,
+			@Valid @RequestBody AcknowledgeTaskRequest request) {
 
-            // Get the current user as the acknowledging provider
-            Provider provider = getCurrentProvider();
-            if (provider == null) {
-                return new ResponseEntity<>(errorPayload("No provider associated with current user"), BAD_REQUEST);
-            }
+		try {
+			request.sanitize();
+			
+			Task task = taskService.getTaskByUuid(taskUuid);
+			if (task == null) {
+				return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Task not found");
+			}
 
-            TaskAcknowledgment acknowledgment = new TaskAcknowledgment();
-            acknowledgment.setInstance(instance);
-            acknowledgment.setAcknowledgedBy(provider);
-            acknowledgment.setAcknowledgmentTime(LocalDateTime.now());
-            
-            // Use the helper method for case-insensitive enum conversion
-            if (request.getAcknowledgmentMethod() != null) {
-                acknowledgment.setAcknowledgmentMethod(request.getAcknowledgmentMethodEnum());
-            } else {
-                acknowledgment.setAcknowledgmentMethod(AcknowledgmentMethod.MANUAL_ENTRY);
-            }
-            
-            acknowledgment.setDeviceId(StringUtils.trimToNull(request.getDeviceId()));
-            acknowledgment.setNotes(StringUtils.trimToNull(request.getNotes()));
-            acknowledgment.setCreator(Context.getAuthenticatedUser());
-            acknowledgment.setDateCreated(new Date());
-            acknowledgment.setBillable(true);
+			if (task.getStatus() != Task.TaskStatus.COMPLETED) {
+				return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Only completed tasks can be acknowledged");
+			}
 
-            TaskAcknowledgment saved = taskAcknowledgmentService.saveTaskAcknowledgment(acknowledgment);
-            return new ResponseEntity<>(convertToResponse(saved), OK);
-        } catch (IllegalArgumentException e) {
-            return new ResponseEntity<>(errorPayload(e.getMessage()), BAD_REQUEST);
-        } catch (Exception e) {
-            log.error("Error while acknowledging task", e);
-            return new ResponseEntity<>(errorPayload(e.getMessage()), BAD_REQUEST);
-        }
-    }
+			// Check if already acknowledged
+			if (taskAcknowledgmentService.getTaskAcknowledgmentByTask(task) != null) {
+				return ResponseEntity.status(HttpStatus.CONFLICT).body("Task is already acknowledged");
+			}
 
-    @RequestMapping(value = "/acknowledgments/{acknowledgmentUuid}", method = RequestMethod.GET)
-    @ResponseBody
-    public ResponseEntity<Object> getAcknowledgment(
-            @PathVariable("acknowledgmentUuid") 
-            @Pattern(regexp = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", message = "Invalid UUID format") 
-            String acknowledgmentUuid) {
-        try {
-            if (!hasPrivilege(PrivilegeConstants.GET_TASK_INSTANCES)) {
-                return forbidden(PrivilegeConstants.GET_TASK_INSTANCES);
-            }
+			// Get current provider (the one acknowledging)
+			Provider provider = getAuthenticatedProvider();
+			if (provider == null) {
+				return ResponseEntity.status(HttpStatus.FORBIDDEN).body("Current user is not a registered provider");
+			}
 
-            TaskAcknowledgment acknowledgment = taskAcknowledgmentService.getTaskAcknowledgmentByUuid(acknowledgmentUuid);
-            if (acknowledgment == null) {
-                return new ResponseEntity<>(errorPayload("Task acknowledgment not found"), NOT_FOUND);
-            }
+			TaskAcknowledgment acknowledgment = new TaskAcknowledgment();
+			acknowledgment.setTask(task);
+			acknowledgment.setAcknowledgedBy(provider);
+			acknowledgment.setAcknowledgmentTime(new Date());
+			acknowledgment.setAcknowledgmentMethod(request.getAcknowledgmentMethodEnum());
+			acknowledgment.setDeviceId(request.getDeviceId());
+			acknowledgment.setNotes(request.getNotes());
+			acknowledgment.setBillable(true); // Default to billable
+			acknowledgment.setLocation(task.getWard());
 
-            return new ResponseEntity<>(convertToResponse(acknowledgment), OK);
-        } catch (Exception e) {
-            log.error("Error while getting task acknowledgment", e);
-            return new ResponseEntity<>(errorPayload(e.getMessage()), BAD_REQUEST);
-        }
-    }
+			TaskAcknowledgment saved = taskAcknowledgmentService.saveTaskAcknowledgment(acknowledgment);
 
-    @RequestMapping(value = "/{instanceUuid}/acknowledgment", method = RequestMethod.GET)
-    @ResponseBody
-    public ResponseEntity<Object> getAcknowledgmentByInstance(@PathVariable("instanceUuid") String instanceUuid) {
-        try {
-            if (!hasPrivilege(PrivilegeConstants.GET_TASK_INSTANCES)) {
-                return forbidden(PrivilegeConstants.GET_TASK_INSTANCES);
-            }
+			Map<String, Object> response = new HashMap<>();
+			response.put("uuid", saved.getUuid());
+			response.put("taskUuid", task.getUuid());
+			response.put("acknowledgedBy", provider.getName());
+			response.put("acknowledgmentTime", saved.getAcknowledgmentTime());
+			response.put("status", "Acknowledged");
 
-            TaskInstance instance = taskInstanceService.getTaskInstanceByUuid(instanceUuid);
-            if (instance == null) {
-                return new ResponseEntity<>(errorPayload("Task instance not found"), NOT_FOUND);
-            }
+			return ResponseEntity.ok(response);
 
-            TaskAcknowledgment acknowledgment = taskAcknowledgmentService.getTaskAcknowledgmentByInstance(instance);
-            if (acknowledgment == null) {
-                return new ResponseEntity<>(errorPayload("No acknowledgment found for this task"), NOT_FOUND);
-            }
+		} catch (Exception e) {
+			log.error("Error acknowledging task", e);
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error: " + e.getMessage());
+		}
+	}
 
-            return new ResponseEntity<>(convertToResponse(acknowledgment), OK);
-        } catch (Exception e) {
-            log.error("Error while getting task acknowledgment", e);
-            return new ResponseEntity<>(errorPayload(e.getMessage()), BAD_REQUEST);
-        }
-    }
+	@GetMapping("/{taskUuid}/acknowledgment")
+	public ResponseEntity<?> getAcknowledgment(@PathVariable String taskUuid) {
+		Task task = taskService.getTaskByUuid(taskUuid);
+		if (task == null) {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Task not found");
+		}
 
-    private Map<String, Object> convertToResponse(TaskAcknowledgment acknowledgment) {
-        Map<String, Object> response = new HashMap<>();
-        response.put("uuid", acknowledgment.getUuid());
-        response.put("instanceUuid", acknowledgment.getInstance() != null ? acknowledgment.getInstance().getUuid() : null);
-        
-        Map<String, Object> providerRef = new HashMap<>();
-        if (acknowledgment.getAcknowledgedBy() != null) {
-            providerRef.put("uuid", acknowledgment.getAcknowledgedBy().getUuid());
-            providerRef.put("display", acknowledgment.getAcknowledgedBy().getName());
-        }
-        response.put("acknowledgedBy", providerRef);
-        
-        response.put("acknowledgmentTime", acknowledgment.getAcknowledgmentTime() != null 
-                ? acknowledgment.getAcknowledgmentTime().toString() : null);
-        response.put("acknowledgmentMethod", acknowledgment.getAcknowledgmentMethod() != null 
-                ? acknowledgment.getAcknowledgmentMethod().name() : null);
-        response.put("deviceId", acknowledgment.getDeviceId());
-        response.put("notes", acknowledgment.getNotes());
-        response.put("billable", acknowledgment.isBillable());
-        response.put("billingCode", acknowledgment.getBillingCode());
-        response.put("billingAmount", acknowledgment.getBillingAmount());
-        response.put("billedAt", acknowledgment.getBilledAt() != null 
-                ? acknowledgment.getBilledAt().toString() : null);
-        response.put("billingReferenceId", acknowledgment.getBillingReferenceId());
-        
-        return response;
-    }
+		TaskAcknowledgment ack = taskAcknowledgmentService.getTaskAcknowledgmentByTask(task);
+		if (ack == null) {
+			return ResponseEntity.status(HttpStatus.NOT_FOUND).body("No acknowledgment found for this task");
+		}
 
-    private Provider getCurrentProvider() {
-        // Try to find a provider linked to the current user
-        return providerService.getProvidersByPerson(Context.getAuthenticatedUser().getPerson())
-                .stream()
-                .findFirst()
-                .orElse(null);
-    }
+		Map<String, Object> response = new HashMap<>();
+		response.put("uuid", ack.getUuid());
+		response.put("acknowledgedBy", ack.getAcknowledgedBy().getName());
+		response.put("acknowledgmentTime", ack.getAcknowledgmentTime());
+		response.put("notes", ack.getNotes());
+		response.put("billable", ack.isBillable());
 
-    private ResponseEntity<Object> forbidden(String privilege) {
-        return new ResponseEntity<>(errorPayload("User doesn't have the following privilege: " + privilege), FORBIDDEN);
-    }
+		return ResponseEntity.ok(response);
+	}
 
-    private SimpleObject errorPayload(String message) {
-        SimpleObject out = new SimpleObject();
-        out.put("error", message);
-        return out;
-    }
-
-    public boolean hasPrivilege(String privilege) {
-        return Context.getUserContext().hasPrivilege(privilege);
-    }
+	private Provider getAuthenticatedProvider() {
+		// Standard way to get provider for current user in OpenMRS
+		return providerService.getProvidersByPerson(Context.getAuthenticatedUser().getPerson())
+				.stream()
+				.findFirst()
+				.orElse(null);
+	}
 }

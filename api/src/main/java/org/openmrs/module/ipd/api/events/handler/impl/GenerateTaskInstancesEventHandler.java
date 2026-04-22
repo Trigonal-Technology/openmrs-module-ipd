@@ -37,7 +37,7 @@ public class GenerateTaskInstancesEventHandler implements IPDEventHandler {
     private TaskTemplateScheduleService taskTemplateScheduleService;
 
     @Autowired
-    private TaskInstanceService taskInstanceService;
+    private TaskService taskService;
 
     @Autowired
     private TaskGenerationLogDAO taskGenerationLogDAO;
@@ -84,26 +84,28 @@ public class GenerateTaskInstancesEventHandler implements IPDEventHandler {
                     continue;
                 }
                 
-                // Create task instance
-                TaskInstance instance = new TaskInstance();
-                instance.setTemplate(template);
-                instance.setPatient(patient);
-                instance.setWard(ward);
-                instance.setName(template.getName());
-                instance.setDescription(template.getDescription());
-                instance.setScheduledTime(scheduledTime);
-                instance.setStatus(TaskInstanceStatus.SCHEDULED);
-                instance.setPriority(template.getPriority());
-                instance.setDateCreated(new Date());
+                // Create scheduled task
+                Task task = new Task();
+                task.setPatient(patient);
+                task.setTaskTemplate(template);
+                task.setWard(ward);
+                task.setName(template.getName());
+                task.setDescription(template.getDescription());
+                task.setExecutionStartTime(Date.from(scheduledTime.atZone(java.time.ZoneId.systemDefault()).toInstant()));
+                task.setStatus(Task.TaskStatus.REQUESTED);
+                task.setIntent(Task.TaskIntent.ORDER);
+                task.setPriority(template.getPriority());
+                task.setTaskType(template.getTaskType());
+                task.setDateCreated(new Date());
                 
-                TaskInstance saved = taskInstanceService.saveTaskInstance(instance);
+                Task saved = taskService.saveTask(task);
                 
                 // Log the generation
                 TaskGenerationLog logEntry = new TaskGenerationLog();
                 logEntry.setPatientTemplate(patientTemplate);
                 logEntry.setScheduledTime(scheduledTime);
                 logEntry.setGenerated(true);
-                logEntry.setInstanceUuid(saved.getUuid());
+                logEntry.setTaskUuid(saved.getUuid());
                 logEntry.setDateCreated(new Date());
                 taskGenerationLogDAO.saveTaskGenerationLog(logEntry);
                 

@@ -44,4 +44,29 @@ public class HibernateTaskDAO implements TaskDAO {
 		}
 		return query.getResultList();
 	}
+
+	@Override
+	public List<Task> getFutureTasksByPatient(org.openmrs.Patient patient, java.util.Date from) throws DAOException {
+		Query<Task> query = sessionFactory.getCurrentSession().createQuery(
+		    "from Task t where t.patient = :patient and t.executionStartTime >= :from and t.voided = false", Task.class);
+		query.setParameter("patient", patient);
+		query.setParameter("from", from);
+		return query.getResultList();
+	}
+
+	@Override
+	public int archiveTasks(Task.TaskStatus status, java.util.Date beforeDate) throws DAOException {
+		// For now, we'll just mark them as voided with a reason "Archived"
+		// or if there's a specific 'ARCHIVED' status, we use that.
+		// Since TaskStatus doesn't have ARCHIVED, we'll just use a bulk update if needed.
+		// But the service requested ARCHIVED? Let's check Task.TaskStatus.
+		// TaskStatus only has REQUESTED, IN_PROGRESS, COMPLETED, CANCELLED.
+		
+		Query<?> query = sessionFactory.getCurrentSession().createQuery(
+		    "update Task t set t.voided = true, t.voidReason = 'Archived' " +
+		    "where t.status = :status and t.executionStartTime < :beforeDate and t.voided = false");
+		query.setParameter("status", status);
+		query.setParameter("beforeDate", beforeDate);
+		return query.executeUpdate();
+	}
 }

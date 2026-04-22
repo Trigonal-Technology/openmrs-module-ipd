@@ -10,9 +10,11 @@ import org.openmrs.api.context.Context;
 import org.openmrs.Patient;
 import org.openmrs.module.ipd.api.model.PatientTaskTemplate;
 import org.openmrs.module.ipd.api.model.RecurrenceType;
+import org.openmrs.module.ipd.api.model.Task;
 import org.openmrs.module.ipd.api.model.TaskTemplate;
 import org.openmrs.module.ipd.api.model.TaskTemplateSchedule;
 import org.openmrs.module.ipd.api.service.PatientTaskTemplateService;
+import org.openmrs.module.ipd.api.service.TaskService;
 import org.openmrs.module.ipd.api.service.TaskTemplateScheduleService;
 import org.openmrs.module.ipd.api.service.TaskTemplateService;
 import org.openmrs.module.ipd.web.contract.ApplyTemplateRequest;
@@ -31,7 +33,10 @@ import javax.validation.Valid;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Pattern;
 import javax.validation.constraints.Size;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -48,16 +53,19 @@ public class TaskTemplateController extends BaseRestController {
     private final TaskTemplateService taskTemplateService;
     private final PatientTaskTemplateService patientTaskTemplateService;
     private final TaskTemplateScheduleService taskTemplateScheduleService;
+    private final TaskService taskService;
     private final LocationService locationService;
     private final ConceptService conceptService;
 
     public TaskTemplateController(TaskTemplateService taskTemplateService,
                                    PatientTaskTemplateService patientTaskTemplateService,
                                    TaskTemplateScheduleService taskTemplateScheduleService,
+                                   TaskService taskService,
                                    LocationService locationService,
                                    ConceptService conceptService) {
         this.taskTemplateService = taskTemplateService;
         this.patientTaskTemplateService = patientTaskTemplateService;
+        this.taskService = taskService;
         this.taskTemplateScheduleService = taskTemplateScheduleService;
         this.locationService = locationService;
         this.conceptService = conceptService;
@@ -288,8 +296,14 @@ public class TaskTemplateController extends BaseRestController {
             PatientTaskTemplate patientTemplate = patientTaskTemplateService.applyTemplateToPatient(
                     template, patient, ward, startDate, endDate);
 
+            // Generate scheduled tasks immediately for the remainder of the current day (plus 1 day)
+            // The background scheduler will handle the rest.
+            LocalDateTime generateUntil = startDate.plusDays(1);
+            int generatedCount = taskService.generateTasksFromTemplate(patientTemplate, startDate, generateUntil);
+
             SimpleObject response = new SimpleObject();
             response.put("message", "Template applied successfully");
+            response.put("generatedTasks", generatedCount);
             response.put("patientTaskTemplateUuid", patientTemplate.getUuid());
             response.put("patientUuid", patient.getUuid());
             response.put("wardUuid", ward.getUuid());

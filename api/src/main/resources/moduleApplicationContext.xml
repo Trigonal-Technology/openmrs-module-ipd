@@ -44,19 +44,13 @@
     <bean id="hibernateTaskTemplateScheduleDAO" class="org.openmrs.module.ipd.api.dao.impl.HibernateTaskTemplateScheduleDAO">
         <property name="sessionFactory" ref="sessionFactory"/>
     </bean>
-    <bean id="hibernateTaskInstanceDAO" class="org.openmrs.module.ipd.api.dao.impl.HibernateTaskInstanceDAO">
-        <property name="sessionFactory" ref="sessionFactory"/>
-    </bean>
-    <bean id="hibernateTaskCompletionDAO" class="org.openmrs.module.ipd.api.dao.impl.HibernateTaskCompletionDAO">
-        <property name="sessionFactory" ref="sessionFactory"/>
-    </bean>
-    <bean id="hibernateTaskAcknowledgmentDAO" class="org.openmrs.module.ipd.api.dao.impl.HibernateTaskAcknowledgmentDAO">
-        <property name="sessionFactory" ref="sessionFactory"/>
-    </bean>
     <bean id="hibernatePatientTaskTemplateDAO" class="org.openmrs.module.ipd.api.dao.impl.HibernatePatientTaskTemplateDAO">
         <property name="sessionFactory" ref="sessionFactory"/>
     </bean>
     <bean id="hibernateTaskGenerationLogDAO" class="org.openmrs.module.ipd.api.dao.impl.HibernateTaskGenerationLogDAO">
+        <property name="sessionFactory" ref="sessionFactory"/>
+    </bean>
+    <bean id="hibernateTaskAcknowledgmentDAO" class="org.openmrs.module.ipd.api.dao.impl.HibernateTaskAcknowledgmentDAO">
         <property name="sessionFactory" ref="sessionFactory"/>
     </bean>
     <bean id="hibernateTaskAuditLogDAO" class="org.openmrs.module.ipd.api.dao.impl.HibernateTaskAuditLogDAO">
@@ -159,6 +153,8 @@
 
     <bean id="taskServiceImpl" class="org.openmrs.module.ipd.api.service.impl.TaskServiceImpl">
         <property name="taskDAO" ref="hibernateTaskDAO"/>
+        <property name="taskTemplateScheduleService" ref="taskTemplateScheduleService"/>
+        <property name="taskGenerationLogDAO" ref="hibernateTaskGenerationLogDAO"/>
     </bean>
     <bean id="taskService" class="org.springframework.transaction.interceptor.TransactionProxyFactoryBean">
         <property name="transactionManager" ref="transactionManager"/>
@@ -232,39 +228,22 @@
         </property>
     </bean>
 
-    <bean id="taskInstanceServiceImpl" class="org.openmrs.module.ipd.api.service.impl.TaskInstanceServiceImpl">
-        <property name="taskInstanceDAO" ref="hibernateTaskInstanceDAO"/>
-        <property name="providerService" ref="providerService"/>
-    </bean>
-    <bean id="taskInstanceService" class="org.springframework.transaction.interceptor.TransactionProxyFactoryBean">
-        <property name="transactionManager" ref="transactionManager"/>
-        <property name="target" ref="taskInstanceServiceImpl"/>
-        <property name="preInterceptors" ref="serviceInterceptors"/>
-        <property name="transactionAttributeSource" ref="transactionAttributeSource"/>
-    </bean>
-    <bean parent="serviceContext">
-        <property name="moduleService">
-            <list merge="true">
-                <value>org.openmrs.module.ipd.api.service.TaskInstanceService</value>
-                <ref bean="taskInstanceService"/>
-            </list>
-        </property>
-    </bean>
 
-    <bean id="taskCompletionServiceImpl" class="org.openmrs.module.ipd.api.service.impl.TaskCompletionServiceImpl">
-        <property name="taskCompletionDAO" ref="hibernateTaskCompletionDAO"/>
+    <bean id="patientTaskTemplateServiceImpl" class="org.openmrs.module.ipd.api.service.impl.PatientTaskTemplateServiceImpl">
+        <property name="patientTaskTemplateDAO" ref="hibernatePatientTaskTemplateDAO"/>
+        <property name="taskService" ref="taskService"/>
     </bean>
-    <bean id="taskCompletionService" class="org.springframework.transaction.interceptor.TransactionProxyFactoryBean">
+    <bean id="patientTaskTemplateService" class="org.springframework.transaction.interceptor.TransactionProxyFactoryBean">
         <property name="transactionManager" ref="transactionManager"/>
-        <property name="target" ref="taskCompletionServiceImpl"/>
+        <property name="target" ref="patientTaskTemplateServiceImpl"/>
         <property name="preInterceptors" ref="serviceInterceptors"/>
         <property name="transactionAttributeSource" ref="transactionAttributeSource"/>
     </bean>
     <bean parent="serviceContext">
         <property name="moduleService">
             <list merge="true">
-                <value>org.openmrs.module.ipd.api.service.TaskCompletionService</value>
-                <ref bean="taskCompletionService"/>
+                <value>org.openmrs.module.ipd.api.service.PatientTaskTemplateService</value>
+                <ref bean="patientTaskTemplateService"/>
             </list>
         </property>
     </bean>
@@ -287,24 +266,6 @@
         </property>
     </bean>
 
-    <bean id="patientTaskTemplateServiceImpl" class="org.openmrs.module.ipd.api.service.impl.PatientTaskTemplateServiceImpl">
-        <property name="patientTaskTemplateDAO" ref="hibernatePatientTaskTemplateDAO"/>
-    </bean>
-    <bean id="patientTaskTemplateService" class="org.springframework.transaction.interceptor.TransactionProxyFactoryBean">
-        <property name="transactionManager" ref="transactionManager"/>
-        <property name="target" ref="patientTaskTemplateServiceImpl"/>
-        <property name="preInterceptors" ref="serviceInterceptors"/>
-        <property name="transactionAttributeSource" ref="transactionAttributeSource"/>
-    </bean>
-    <bean parent="serviceContext">
-        <property name="moduleService">
-            <list merge="true">
-                <value>org.openmrs.module.ipd.api.service.PatientTaskTemplateService</value>
-                <ref bean="patientTaskTemplateService"/>
-            </list>
-        </property>
-    </bean>
-
     <!-- Task Audit Service -->
     <bean id="taskAuditServiceImpl" class="org.openmrs.module.ipd.api.audit.impl.TaskAuditServiceImpl">
         <property name="taskAuditLogDAO" ref="hibernateTaskAuditLogDAO"/>
@@ -315,5 +276,7 @@
         <property name="preInterceptors" ref="serviceInterceptors"/>
         <property name="transactionAttributeSource" ref="transactionAttributeSource"/>
     </bean>
+
+    <bean id="taskGenerationTask" class="org.openmrs.module.ipd.api.scheduler.tasks.TaskGenerationTask" scope="prototype"/>
 
 </beans>

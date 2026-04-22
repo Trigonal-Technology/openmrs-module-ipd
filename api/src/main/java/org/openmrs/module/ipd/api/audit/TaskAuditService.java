@@ -28,20 +28,15 @@ public interface TaskAuditService {
     void logTemplateVoided(TaskTemplate template, User voidedBy, String reason);
 
     /**
-     * Log when a task instance is created
+     * Log when a task is created
      */
-    void logInstanceCreated(TaskInstance instance, User createdBy);
+    void logTaskCreated(Task task, User createdBy);
 
     /**
-     * Log when a task instance status changes
+     * Log when a task status changes
      */
-    void logInstanceStatusChanged(TaskInstance instance, TaskInstanceStatus oldStatus, 
-                                   TaskInstanceStatus newStatus, User changedBy, String reason);
-
-    /**
-     * Log when a task is completed
-     */
-    void logTaskCompleted(TaskCompletion completion, User completedBy);
+    void logTaskStatusChanged(Task task, Task.TaskStatus oldStatus, 
+                                   Task.TaskStatus newStatus, User changedBy, String reason);
 
     /**
      * Log when a doctor acknowledges a task
@@ -69,9 +64,9 @@ public interface TaskAuditService {
     void logTemplatesDeactivated(String patientUuid, User deactivatedBy);
 
     /**
-     * Get audit logs for a specific task instance
+     * Get audit logs for a specific task
      */
-    List<TaskAuditLog> getAuditLogsForInstance(String instanceUuid, LocalDateTime from, LocalDateTime to);
+    List<TaskAuditLog> getAuditLogsForTask(String taskUuid, LocalDateTime from, LocalDateTime to);
 
     /**
      * Get audit logs for a specific user

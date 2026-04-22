@@ -31,8 +31,8 @@ public class TaskGenerationLog extends BaseOpenmrsData {
     @Column(name = "generated", nullable = false)
     private boolean generated = false;
 
-    @Column(name = "instance_uuid", length = 38)
-    private String instanceUuid;
+    @Column(name = "task_uuid", length = 38)
+    private String taskUuid;
 
     @Override
     public Integer getId() {
