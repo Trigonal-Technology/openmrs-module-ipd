@@ -41,10 +41,14 @@ public class HibernateTaskAcknowledgmentDAO implements TaskAcknowledgmentDAO {
 
 	@Override
 	public TaskAcknowledgment getTaskAcknowledgmentByTask(Task task) throws DAOException {
+		if (task == null || task.getId() == null) {
+			return null;
+		}
+		// Use taskId (not entity bind) to avoid bad SQL for detached/proxy task references.
 		Query<TaskAcknowledgment> query = sessionFactory.getCurrentSession()
-				.createQuery("from TaskAcknowledgment a where a.task = :task and a.voided = false", 
+				.createQuery("from TaskAcknowledgment a where a.task.taskId = :taskId and a.voided = false",
 						TaskAcknowledgment.class);
-		query.setParameter("task", task);
+		query.setParameter("taskId", task.getId());
 		return query.uniqueResult();
 	}
 

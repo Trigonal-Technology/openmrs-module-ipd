@@ -968,14 +968,14 @@
         </createIndex>
     </changeSet>
  
-    <!-- TABLE: ipd_task_acknowledgment - Doctor acknowledgment for clinical audit and billing -->
+    <!-- ipd_task_acknowledgment: TaskAcknowledgment (JPA) + BaseChangeableOpenmrsData. No separate repair changeSet; use this for new databases. -->
     <changeSet id="ipd-task-acknowledgment-20260422-create-table" author="nidan">
         <preConditions onFail="MARK_RAN">
             <not>
                 <tableExists tableName="ipd_task_acknowledgment"/>
             </not>
         </preConditions>
-        <comment>Create ipd_task_acknowledgment table linked to unified Task model</comment>
+        <comment>Schema for TaskAcknowledgment (task_id..billing_reference_id) and BaseOpenmrs/Changeable+void users columns; FKs align with ipd_task</comment>
         <createTable tableName="ipd_task_acknowledgment">
             <column name="acknowledgment_id" type="int" autoIncrement="true">
                 <constraints primaryKey="true" nullable="false"/>
@@ -1031,10 +1031,13 @@
         <addForeignKeyConstraint baseTableName="ipd_task_acknowledgment" baseColumnNames="creator"
                                  constraintName="ipd_task_ack_creator_fk"
                                  referencedTableName="users" referencedColumnNames="user_id"/>
+        <addForeignKeyConstraint baseTableName="ipd_task_acknowledgment" baseColumnNames="changed_by"
+                                 constraintName="ipd_task_ack_changed_by_fk"
+                                 referencedTableName="users" referencedColumnNames="user_id"/>
+        <addForeignKeyConstraint baseTableName="ipd_task_acknowledgment" baseColumnNames="voided_by"
+                                 constraintName="ipd_task_ack_voided_by_fk"
+                                 referencedTableName="users" referencedColumnNames="user_id"/>
  
-        <createIndex tableName="ipd_task_acknowledgment" indexName="ipd_task_ack_task_idx">
-            <column name="task_id"/>
-        </createIndex>
         <createIndex tableName="ipd_task_acknowledgment" indexName="ipd_task_ack_provider_time_idx">
             <column name="acknowledged_by"/>
             <column name="acknowledgment_time"/>
@@ -1117,17 +1120,20 @@
         </createIndex>
     </changeSet>
 
-    <!-- TABLE: ipd_task_generation_log - Prevent duplicate task generation -->
+    <!-- ipd_task_generation_log: TaskGenerationLog (JPA) + BaseOpenmrsData. Single create for new DBs. -->
     <changeSet id="ipd-task-generation-log-20260417-create-table" author="nidan">
         <preConditions onFail="MARK_RAN">
             <not>
                 <tableExists tableName="ipd_task_generation_log"/>
             </not>
         </preConditions>
-        <comment>Create ipd_task_generation_log table to track scheduled task generation</comment>
+        <comment>log_id, patient_template_id, scheduled_time, generated, task_uuid; uuid + audit/void (BaseOpenmrsData) per OpenMRS 2.5</comment>
         <createTable tableName="ipd_task_generation_log">
             <column name="log_id" type="int" autoIncrement="true">
                 <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="uuid" type="varchar(38)">
+                <constraints nullable="false" unique="true"/>
             </column>
             <column name="patient_template_id" type="int">
                 <constraints nullable="false"/>
@@ -1138,14 +1144,34 @@
             <column name="generated" type="boolean" defaultValueBoolean="false">
                 <constraints nullable="false"/>
             </column>
-            <column name="instance_uuid" type="varchar(38)"/>
+            <column name="task_uuid" type="varchar(38)"/>
+            <column name="creator" type="int" defaultValueNumeric="1">
+                <constraints nullable="false"/>
+            </column>
             <column name="date_created" type="TIMESTAMP">
                 <constraints nullable="false"/>
             </column>
+            <column name="changed_by" type="int"/>
+            <column name="date_changed" type="TIMESTAMP"/>
+            <column name="voided" type="boolean" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="voided_by" type="int"/>
+            <column name="date_voided" type="TIMESTAMP"/>
+            <column name="void_reason" type="varchar(255)"/>
         </createTable>
         <addForeignKeyConstraint baseTableName="ipd_task_generation_log" baseColumnNames="patient_template_id"
                                  constraintName="ipd_task_gen_log_pt_fk"
                                  referencedTableName="ipd_patient_task_template" referencedColumnNames="patient_template_id"/>
+        <addForeignKeyConstraint baseTableName="ipd_task_generation_log" baseColumnNames="creator"
+                                 constraintName="ipd_task_gen_log_creator_fk"
+                                 referencedTableName="users" referencedColumnNames="user_id"/>
+        <addForeignKeyConstraint baseTableName="ipd_task_generation_log" baseColumnNames="changed_by"
+                                 constraintName="ipd_task_gen_log_changed_by_fk"
+                                 referencedTableName="users" referencedColumnNames="user_id"/>
+        <addForeignKeyConstraint baseTableName="ipd_task_generation_log" baseColumnNames="voided_by"
+                                 constraintName="ipd_task_gen_log_voided_by_fk"
+                                 referencedTableName="users" referencedColumnNames="user_id"/>
         <createIndex tableName="ipd_task_generation_log" indexName="ipd_task_gen_log_unique_idx" unique="true">
             <column name="patient_template_id"/>
             <column name="scheduled_time"/>
@@ -1201,75 +1227,6 @@
         <createIndex tableName="ipd_task_audit_log" indexName="ipd_task_audit_time_idx">
             <column name="action_time"/>
         </createIndex>
-    </changeSet>
-
-    <!-- CHANGE: Rename instance_uuid to task_uuid in ipd_task_generation_log -->
-    <changeSet id="ipd-task-gen-log-20260422-rename-column" author="nidan">
-        <preConditions onFail="MARK_RAN">
-            <columnExists tableName="ipd_task_generation_log" columnName="instance_uuid"/>
-        </preConditions>
-        <comment>Rename instance_uuid to task_uuid to support unified Task model</comment>
-        <renameColumn tableName="ipd_task_generation_log"
-                      oldColumnName="instance_uuid"
-                      newColumnName="task_uuid"
-                      columnDataType="varchar(38)"/>
-    </changeSet>
-
-    <!-- CHANGE: Add BaseOpenmrsData columns to ipd_task_generation_log -->
-    <changeSet id="ipd-task-gen-log-20260422-add-base-columns" author="nidan">
-        <preConditions onFail="MARK_RAN">
-            <not>
-                <columnExists tableName="ipd_task_generation_log" columnName="uuid"/>
-            </not>
-        </preConditions>
-        <comment>Add BaseOpenmrsData columns to ipd_task_generation_log for compatibility</comment>
-        <addColumn tableName="ipd_task_generation_log">
-            <column name="uuid" type="varchar(38)">
-                <constraints nullable="false" unique="true"/>
-            </column>
-        </addColumn>
-        <addColumn tableName="ipd_task_generation_log">
-            <column name="creator" type="int" defaultValueNumeric="1"/>
-        </addColumn>
-        <addColumn tableName="ipd_task_generation_log">
-            <column name="changed_by" type="int"/>
-        </addColumn>
-        <addColumn tableName="ipd_task_generation_log">
-            <column name="date_changed" type="TIMESTAMP"/>
-        </addColumn>
-        <addColumn tableName="ipd_task_generation_log">
-            <column name="voided" type="boolean" defaultValueBoolean="false"/>
-        </addColumn>
-        <addColumn tableName="ipd_task_generation_log">
-            <column name="voided_by" type="int"/>
-        </addColumn>
-        <addColumn tableName="ipd_task_generation_log">
-            <column name="date_voided" type="TIMESTAMP"/>
-        </addColumn>
-        <addColumn tableName="ipd_task_generation_log">
-            <column name="void_reason" type="varchar(255)"/>
-        </addColumn>
-        
-        <!-- Add constraints -->
-        <addNotNullConstraint tableName="ipd_task_generation_log" columnName="uuid" 
-                               columnDataType="varchar(38)"/>
-        <addNotNullConstraint tableName="ipd_task_generation_log" columnName="creator" 
-                               columnDataType="int"/>
-        <addNotNullConstraint tableName="ipd_task_generation_log" columnName="date_created" 
-                               columnDataType="TIMESTAMP"/>
-        <addNotNullConstraint tableName="ipd_task_generation_log" columnName="voided" 
-                               columnDataType="boolean"/>
-        
-        <!-- Add foreign key for creator -->
-        <addForeignKeyConstraint baseTableName="ipd_task_generation_log" baseColumnNames="creator"
-                                 constraintName="ipd_task_gen_log_creator_fk"
-                                 referencedTableName="users" referencedColumnNames="user_id"/>
-        <addForeignKeyConstraint baseTableName="ipd_task_generation_log" baseColumnNames="changed_by"
-                                 constraintName="ipd_task_gen_log_changed_by_fk"
-                                 referencedTableName="users" referencedColumnNames="user_id"/>
-        <addForeignKeyConstraint baseTableName="ipd_task_generation_log" baseColumnNames="voided_by"
-                                 constraintName="ipd_task_gen_log_voided_by_fk"
-                                 referencedTableName="users" referencedColumnNames="user_id"/>
     </changeSet>
 
     <!-- CHANGE: Add template_id and ward_id to ipd_task table -->
@@ -1328,171 +1285,6 @@
                  CURRENT_TIMESTAMP, 'MM/dd/yyyy HH:mm:ss',
                  14400, true, 1, CURRENT_TIMESTAMP, gen_random_uuid()::varchar);
         </sql>
-    </changeSet>
-
-    <!-- If ipd_task_generation_log existed with partial schema, the "add base columns" changeSet
-         may be skipped (e.g. uuid present but other BaseOpenmrsData columns not). Add any missing. -->
-    <changeSet id="ipd-repair-genlog-uuid" author="nidan">
-        <preConditions onFail="MARK_RAN">
-            <and>
-                <tableExists tableName="ipd_task_generation_log"/>
-                <not>
-                    <columnExists tableName="ipd_task_generation_log" columnName="uuid"/>
-                </not>
-            </and>
-        </preConditions>
-        <addColumn tableName="ipd_task_generation_log">
-            <column name="uuid" type="varchar(38)">
-                <constraints nullable="true"/>
-            </column>
-        </addColumn>
-    </changeSet>
-    <changeSet id="ipd-repair-genlog-creator" author="nidan">
-        <preConditions onFail="MARK_RAN">
-            <and>
-                <tableExists tableName="ipd_task_generation_log"/>
-                <not>
-                    <columnExists tableName="ipd_task_generation_log" columnName="creator"/>
-                </not>
-            </and>
-        </preConditions>
-        <addColumn tableName="ipd_task_generation_log">
-            <column name="creator" type="int"/>
-        </addColumn>
-    </changeSet>
-    <changeSet id="ipd-repair-genlog-changed_by" author="nidan">
-        <preConditions onFail="MARK_RAN">
-            <and>
-                <tableExists tableName="ipd_task_generation_log"/>
-                <not>
-                    <columnExists tableName="ipd_task_generation_log" columnName="changed_by"/>
-                </not>
-            </and>
-        </preConditions>
-        <addColumn tableName="ipd_task_generation_log">
-            <column name="changed_by" type="int"/>
-        </addColumn>
-    </changeSet>
-    <changeSet id="ipd-repair-genlog-date_changed" author="nidan">
-        <preConditions onFail="MARK_RAN">
-            <and>
-                <tableExists tableName="ipd_task_generation_log"/>
-                <not>
-                    <columnExists tableName="ipd_task_generation_log" columnName="date_changed"/>
-                </not>
-            </and>
-        </preConditions>
-        <addColumn tableName="ipd_task_generation_log">
-            <column name="date_changed" type="TIMESTAMP"/>
-        </addColumn>
-    </changeSet>
-    <changeSet id="ipd-repair-genlog-voided" author="nidan">
-        <preConditions onFail="MARK_RAN">
-            <and>
-                <tableExists tableName="ipd_task_generation_log"/>
-                <not>
-                    <columnExists tableName="ipd_task_generation_log" columnName="voided"/>
-                </not>
-            </and>
-        </preConditions>
-        <addColumn tableName="ipd_task_generation_log">
-            <column name="voided" type="boolean" defaultValueBoolean="false"/>
-        </addColumn>
-    </changeSet>
-    <changeSet id="ipd-repair-genlog-voided_by" author="nidan">
-        <preConditions onFail="MARK_RAN">
-            <and>
-                <tableExists tableName="ipd_task_generation_log"/>
-                <not>
-                    <columnExists tableName="ipd_task_generation_log" columnName="voided_by"/>
-                </not>
-            </and>
-        </preConditions>
-        <addColumn tableName="ipd_task_generation_log">
-            <column name="voided_by" type="int"/>
-        </addColumn>
-    </changeSet>
-    <changeSet id="ipd-repair-genlog-date_voided" author="nidan">
-        <preConditions onFail="MARK_RAN">
-            <and>
-                <tableExists tableName="ipd_task_generation_log"/>
-                <not>
-                    <columnExists tableName="ipd_task_generation_log" columnName="date_voided"/>
-                </not>
-            </and>
-        </preConditions>
-        <addColumn tableName="ipd_task_generation_log">
-            <column name="date_voided" type="TIMESTAMP"/>
-        </addColumn>
-    </changeSet>
-    <changeSet id="ipd-repair-genlog-void_reason" author="nidan">
-        <preConditions onFail="MARK_RAN">
-            <and>
-                <tableExists tableName="ipd_task_generation_log"/>
-                <not>
-                    <columnExists tableName="ipd_task_generation_log" columnName="void_reason"/>
-                </not>
-            </and>
-        </preConditions>
-        <addColumn tableName="ipd_task_generation_log">
-            <column name="void_reason" type="varchar(255)"/>
-        </addColumn>
-    </changeSet>
-    <changeSet id="ipd-repair-genlog-foreign-keys" author="nidan">
-        <preConditions onFail="MARK_RAN">
-            <and>
-                <columnExists tableName="ipd_task_generation_log" columnName="creator"/>
-                <not>
-                    <foreignKeyConstraintExists foreignKeyName="ipd_task_gen_log_creator_fk" foreignKeyTableName="ipd_task_generation_log"/>
-                </not>
-            </and>
-        </preConditions>
-        <addForeignKeyConstraint baseTableName="ipd_task_generation_log" baseColumnNames="creator"
-                                 constraintName="ipd_task_gen_log_creator_fk"
-                                 referencedTableName="users" referencedColumnNames="user_id"/>
-    </changeSet>
-    <changeSet id="ipd-repair-genlog-fk-changed_by" author="nidan">
-        <preConditions onFail="MARK_RAN">
-            <and>
-                <columnExists tableName="ipd_task_generation_log" columnName="changed_by"/>
-                <not>
-                    <foreignKeyConstraintExists foreignKeyName="ipd_task_gen_log_changed_by_fk" foreignKeyTableName="ipd_task_generation_log"/>
-                </not>
-            </and>
-        </preConditions>
-        <addForeignKeyConstraint baseTableName="ipd_task_generation_log" baseColumnNames="changed_by"
-                                 constraintName="ipd_task_gen_log_changed_by_fk"
-                                 referencedTableName="users" referencedColumnNames="user_id"/>
-    </changeSet>
-    <changeSet id="ipd-repair-genlog-fk-voided_by" author="nidan">
-        <preConditions onFail="MARK_RAN">
-            <and>
-                <columnExists tableName="ipd_task_generation_log" columnName="voided_by"/>
-                <not>
-                    <foreignKeyConstraintExists foreignKeyName="ipd_task_gen_log_voided_by_fk" foreignKeyTableName="ipd_task_generation_log"/>
-                </not>
-            </and>
-        </preConditions>
-        <addForeignKeyConstraint baseTableName="ipd_task_generation_log" baseColumnNames="voided_by"
-                                 constraintName="ipd_task_gen_log_voided_by_fk"
-                                 referencedTableName="users" referencedColumnNames="user_id"/>
-    </changeSet>
-    <changeSet id="ipd-repair-gentask-uuid-backfill" author="nidan">
-        <preConditions onFail="MARK_RAN">
-            <tableExists tableName="ipd_task_generation_log"/>
-        </preConditions>
-        <sql dbms="mysql,mariadb">
-            UPDATE ipd_task_generation_log SET uuid = UUID() WHERE uuid IS NULL OR uuid = '';
-        </sql>
-        <sql dbms="postgresql">
-            UPDATE ipd_task_generation_log SET uuid = gen_random_uuid()::varchar WHERE uuid IS NULL OR uuid = '';
-        </sql>
-    </changeSet>
-    <changeSet id="ipd-repair-gentask-creator-backfill" author="nidan">
-        <preConditions onFail="MARK_RAN">
-            <columnExists tableName="ipd_task_generation_log" columnName="creator"/>
-        </preConditions>
-        <sql>UPDATE ipd_task_generation_log SET creator = 1 WHERE creator IS NULL;</sql>
     </changeSet>
 
 </databaseChangeLog>

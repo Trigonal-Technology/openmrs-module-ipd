@@ -24,8 +24,9 @@ public class TaskAcknowledgment extends BaseChangeableOpenmrsData {
 	@Column(name = "acknowledgment_id")
 	private Integer acknowledgmentId;
 
-	@OneToOne(optional = false)
-	@JoinColumn(name = "task_id")
+	/** Unidirectional: one row per task. Use many-to-one + unique=task_id (avoids known Hibernate 5 issues with unidirectional @OneToOne + lazy). */
+	@ManyToOne(optional = false)
+	@JoinColumn(name = "task_id", nullable = false, unique = true)
 	private Task task;
 
 	@ManyToOne(optional = false)

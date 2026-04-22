@@ -1,7 +1,9 @@
 package org.openmrs.module.ipd.web.controller;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.openmrs.Provider;
+import org.openmrs.User;
 import org.openmrs.api.ProviderService;
 import org.openmrs.api.context.Context;
 import org.openmrs.module.ipd.api.model.Task;
@@ -19,6 +21,7 @@ import javax.validation.Valid;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/rest/" + RestConstants.VERSION_1 + "/ipd/tasks")
@@ -71,6 +74,7 @@ public class TaskAcknowledgmentController {
 			acknowledgment.setNotes(request.getNotes());
 			acknowledgment.setBillable(true); // Default to billable
 			acknowledgment.setLocation(task.getWard());
+			stampNewAcknowledgment(acknowledgment);
 
 			TaskAcknowledgment saved = taskAcknowledgmentService.saveTaskAcknowledgment(acknowledgment);
 
@@ -91,24 +95,30 @@ public class TaskAcknowledgmentController {
 
 	@GetMapping("/{taskUuid}/acknowledgment")
 	public ResponseEntity<?> getAcknowledgment(@PathVariable String taskUuid) {
-		Task task = taskService.getTaskByUuid(taskUuid);
-		if (task == null) {
-			return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Task not found");
+		try {
+			Task task = taskService.getTaskByUuid(taskUuid);
+			if (task == null) {
+				return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Task not found");
+			}
+
+			TaskAcknowledgment ack = taskAcknowledgmentService.getTaskAcknowledgmentByTask(task);
+			if (ack == null) {
+				return ResponseEntity.status(HttpStatus.NOT_FOUND).body("No acknowledgment found for this task");
+			}
+
+			Map<String, Object> response = new HashMap<>();
+			response.put("uuid", ack.getUuid());
+			response.put("acknowledgedBy", ack.getAcknowledgedBy().getName());
+			response.put("acknowledgmentTime", ack.getAcknowledgmentTime());
+			response.put("notes", ack.getNotes());
+			response.put("billable", ack.isBillable());
+
+			return ResponseEntity.ok(response);
+		} catch (Exception e) {
+			log.error("Error loading task acknowledgment", e);
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body("Error loading acknowledgment: " + e.getMessage());
 		}
-
-		TaskAcknowledgment ack = taskAcknowledgmentService.getTaskAcknowledgmentByTask(task);
-		if (ack == null) {
-			return ResponseEntity.status(HttpStatus.NOT_FOUND).body("No acknowledgment found for this task");
-		}
-
-		Map<String, Object> response = new HashMap<>();
-		response.put("uuid", ack.getUuid());
-		response.put("acknowledgedBy", ack.getAcknowledgedBy().getName());
-		response.put("acknowledgmentTime", ack.getAcknowledgmentTime());
-		response.put("notes", ack.getNotes());
-		response.put("billable", ack.isBillable());
-
-		return ResponseEntity.ok(response);
 	}
 
 	private Provider getAuthenticatedProvider() {
@@ -117,5 +127,19 @@ public class TaskAcknowledgmentController {
 				.stream()
 				.findFirst()
 				.orElse(null);
+	}
+
+	/** Required for JPA + NOT NULL uuid/creator on {@link org.openmrs.module.ipd.api.model.TaskAcknowledgment}. */
+	private void stampNewAcknowledgment(TaskAcknowledgment data) {
+		if (StringUtils.isBlank(data.getUuid())) {
+			data.setUuid(UUID.randomUUID().toString());
+		}
+		User creator = Context.getAuthenticatedUser();
+		if (creator == null) {
+			creator = Context.getUserService().getUser(1);
+		}
+		data.setCreator(creator);
+		data.setDateCreated(new Date());
+		data.setVoided(false);
 	}
 }

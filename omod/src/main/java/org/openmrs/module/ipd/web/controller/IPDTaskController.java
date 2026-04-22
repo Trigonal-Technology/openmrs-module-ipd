@@ -68,9 +68,12 @@ public class IPDTaskController extends BaseRestController {
 
 	@RequestMapping(method = RequestMethod.GET)
 	@ResponseBody
-	public ResponseEntity<Object> getTasks(@RequestParam(value = "patient") String patientUuid,
+	public ResponseEntity<Object> getTasks(@RequestParam(value = "patient", required = false) String patientUuid,
 	        @RequestParam(value = "status", required = false) String statuses) {
 		try {
+			if (StringUtils.isBlank(patientUuid)) {
+				return new ResponseEntity<>(errorPayload("patient query parameter is required"), BAD_REQUEST);
+			}
 			if (!hasPrivilege(PrivilegeConstants.GET_TASKS)) {
 				return forbidden(PrivilegeConstants.GET_TASKS);
 			}

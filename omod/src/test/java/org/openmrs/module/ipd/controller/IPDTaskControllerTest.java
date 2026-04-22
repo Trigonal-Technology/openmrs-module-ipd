@@ -59,6 +59,14 @@ public class IPDTaskControllerTest {
 	}
 
 	@Test
+	public void getTasks_shouldReturnBadRequestWhenPatientMissing() {
+		ResponseEntity<Object> response = controller.getTasks(null, null);
+		assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+		response = controller.getTasks("  ", null);
+		assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+	}
+
+	@Test
 	public void getTasks_shouldReturnWrappedResults() {
 		Mockito.doReturn(true).when(controller).hasPrivilege(PrivilegeConstants.GET_TASKS);
 		Task task = sampleTask(Task.TaskStatus.REQUESTED);

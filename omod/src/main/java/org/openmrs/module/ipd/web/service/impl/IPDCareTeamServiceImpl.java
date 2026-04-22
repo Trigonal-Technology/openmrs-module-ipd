@@ -2,9 +2,12 @@ package org.openmrs.module.ipd.web.service.impl;
 
 import org.openmrs.Patient;
 import org.openmrs.Visit;
+import org.openmrs.api.APIException;
 import org.openmrs.api.ConceptService;
 import org.openmrs.api.PatientService;
 import org.openmrs.api.VisitService;
+
+import java.util.List;
 import org.openmrs.module.ipd.api.model.CareTeam;
 import org.openmrs.module.ipd.api.service.CareTeamService;
 import org.openmrs.module.ipd.web.contract.CareTeamRequest;
@@ -36,7 +39,14 @@ public class IPDCareTeamServiceImpl implements IPDCareTeamService {
     @Override
     public CareTeam saveCareTeamParticipants(CareTeamRequest careTeamRequest) {
         Patient patient = patientService.getPatientByUuid(careTeamRequest.getPatientUuid());
-        Visit visit = visitService.getActiveVisitsByPatient(patient).get(0);
+        if (patient == null) {
+            throw new APIException("Invalid patientUuid");
+        }
+        List<Visit> active = visitService.getActiveVisitsByPatient(patient);
+        if (active == null || active.isEmpty()) {
+            throw new APIException("No active visit for patient; cannot save care team");
+        }
+        Visit visit = active.get(0);
         CareTeam careTeam = careTeamService.getCareTeamByVisit(visit);
         if (careTeam==null || careTeam.getCareTeamId()==null){
             careTeam = careTeamFactory.createCareTeamFromRequest(careTeamRequest,patient,visit);

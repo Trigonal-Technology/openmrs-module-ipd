@@ -2,6 +2,7 @@ package org.openmrs.module.ipd.web.controller;
 
 import com.google.common.collect.Lists;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.openmrs.Patient;
 import org.openmrs.Visit;
 import org.openmrs.api.PatientService;
@@ -97,13 +98,33 @@ public class IPDScheduleController extends BaseRestController {
             if (!Context.getUserContext().hasPrivilege(PrivilegeConstants.GET_MEDICATION_ADMINISTRATION) || !Context.getUserContext().hasPrivilege(PrivilegeConstants.GET_MEDICATION_TASKS)) {
                 return new ResponseEntity<>(RestUtil.wrapErrorResponse(new Exception(), "User doesn't have the following privilege(s) " + PrivilegeConstants.GET_MEDICATION_ADMINISTRATION+", "+PrivilegeConstants.GET_MEDICATION_TASKS), FORBIDDEN);
             }
-;            if (startTime != null && endTime != null) {
+            if (startTime != null && endTime != null) {
                 LocalDateTime localStartDate = convertEpocUTCToLocalTimeZone(startTime);
                 LocalDateTime localEndDate = convertEpocUTCToLocalTimeZone(endTime);
-                Boolean considerAdministeredTime = view!=null & IPDConstants.IPD_VIEW_DRUG_CHART.equals(view);
-                Patient patient=patientService.getPatientByUuid(patientUuid);
-                Visit visit = visitUuid !=null ? visitService.getVisitByUuid(visitUuid) : visitService.getActiveVisitsByPatient(patient).get(0);
-                List<Slot> slots = ipdScheduleService.getMedicationSlotsForTheGivenTimeFrame(patientUuid, localStartDate, localEndDate,considerAdministeredTime, visit);
+                Boolean considerAdministeredTime = view != null && IPDConstants.IPD_VIEW_DRUG_CHART.equals(view);
+                Patient patient = patientService.getPatientByUuid(patientUuid);
+                if (patient == null) {
+                    return new ResponseEntity<>(RestUtil.wrapErrorResponse(
+                            new IllegalArgumentException("patient not found"), "Invalid patientUuid"), BAD_REQUEST);
+                }
+                Visit visit;
+                if (StringUtils.isNotBlank(visitUuid)) {
+                    visit = visitService.getVisitByUuid(visitUuid);
+                    if (visit == null) {
+                        return new ResponseEntity<>(RestUtil.wrapErrorResponse(
+                                new IllegalArgumentException("visit not found"), "Invalid visitUuid"), BAD_REQUEST);
+                    }
+                } else {
+                    List<Visit> activeVisits = visitService.getActiveVisitsByPatient(patient);
+                    if (activeVisits == null || activeVisits.isEmpty()) {
+                        return new ResponseEntity<>(RestUtil.wrapErrorResponse(
+                                new IllegalArgumentException("no active visit"),
+                                "No active visit for patient; pass visitUuid or start a visit"), BAD_REQUEST);
+                    }
+                    visit = activeVisits.get(0);
+                }
+                List<Slot> slots = ipdScheduleService.getMedicationSlotsForTheGivenTimeFrame(
+                        patientUuid, localStartDate, localEndDate, considerAdministeredTime, visit);
                 return new ResponseEntity<>(constructResponse(slots, visit), OK);
             }
             throw new Exception();
