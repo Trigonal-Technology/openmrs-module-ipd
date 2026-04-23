@@ -37,11 +37,14 @@ Use HTTP Basic Auth (same as standard OpenMRS REST).
 
 **Query parameters**
 
-| Parameter  | Type   | Required | Description |
-|------------|--------|----------|-------------|
-| `wardUuid` | string | No       | If set, filter by ward (location) UUID. If omitted, active templates are listed. |
+| Parameter     | Type   | Required | Description |
+|---------------|--------|----------|-------------|
+| `wardUuid`    | string | No       | If set, filter by ward (location) UUID. If omitted, active templates are listed. |
+| `pageNumber`  | int    | No       | 1-based page number. Default `1`. Values `<1` rejected. |
+| `pageSize`    | int    | No       | Page size. Default `20`. Values `<1` rejected. |
+| `searchQuery` | string | No       | Case-insensitive search against template `name` and `description`. |
 
-**Response `200`:** `{ "results": [ TaskTemplateResponse, ... ] }`
+**Response `200`:** `{ "results": [ TaskTemplateResponse, ... ], "pageNumber": 1, "pageSize": 20, "totalCount": 42, "totalPages": 3 }`
 
 `TaskTemplateResponse` includes: `uuid`, `name`, `description`, `taskType` `{ uuid, display }`, `ward` (optional), `priority`, `estimatedDurationMinutes`, `defaultAssigneeRole` (optional), `active`, `recurrence` (optional; see below).
 
@@ -100,7 +103,23 @@ Use HTTP Basic Auth (same as standard OpenMRS REST).
 
 **Response:** `200` with updated `TaskTemplateResponse`.
 
-### 1.5 Void task template
+### 1.5 Update task template
+
+`PUT /ipd/task-templates/{templateUuid}`
+
+**Privilege:** `Manage Task Templates`
+
+**Body:** same shape as create (`TaskTemplateRequest`).
+
+- Parent fields (`name`, `description`, `taskTypeUuid`, `wardUuid`, `priority`, `estimatedDurationMinutes`, `defaultAssigneeRoleUuid`, `active`) updated on existing template.
+- Recurrence handling:
+  - If schedule exists and `recurrence` provided, existing schedule row updated in place.
+  - If schedule missing and `recurrence` provided, new schedule created.
+  - If `recurrence` omitted, current schedule remains unchanged.
+
+**Response:** `200` with updated `TaskTemplateResponse`; `404` if template not found; `400` on validation / invalid UUID references.
+
+### 1.6 Void task template
 
 `DELETE /ipd/task-templates/{templateUuid}?reason=...`
 
@@ -110,7 +129,7 @@ Use HTTP Basic Auth (same as standard OpenMRS REST).
 
 **Response:** `200` — `{ "message": "Task template voided successfully" }`.
 
-### 1.6 Apply template to patient
+### 1.7 Apply template to patient
 
 `POST /ipd/task-templates/{templateUuid}/apply`
 
