@@ -46,6 +46,49 @@ public class HibernateTaskTemplateDAO implements TaskTemplateDAO {
     }
 
     @Override
+    public List<TaskTemplate> getTaskTemplates(Location ward, String searchQuery, int offset, int pageSize) throws DAOException {
+        StringBuilder hql = new StringBuilder("from TaskTemplate t where t.active = true and t.voided = false");
+        if (ward != null) {
+            hql.append(" and t.ward = :ward");
+        }
+        if (searchQuery != null && !searchQuery.trim().isEmpty()) {
+            hql.append(" and (lower(t.name) like :query or lower(t.description) like :query)");
+        }
+        hql.append(" order by t.name");
+
+        Query<TaskTemplate> query = sessionFactory.getCurrentSession().createQuery(hql.toString(), TaskTemplate.class);
+        if (ward != null) {
+            query.setParameter("ward", ward);
+        }
+        if (searchQuery != null && !searchQuery.trim().isEmpty()) {
+            query.setParameter("query", "%" + searchQuery.trim().toLowerCase() + "%");
+        }
+        query.setFirstResult(offset);
+        query.setMaxResults(pageSize);
+        return query.getResultList();
+    }
+
+    @Override
+    public long countTaskTemplates(Location ward, String searchQuery) throws DAOException {
+        StringBuilder hql = new StringBuilder("select count(t) from TaskTemplate t where t.active = true and t.voided = false");
+        if (ward != null) {
+            hql.append(" and t.ward = :ward");
+        }
+        if (searchQuery != null && !searchQuery.trim().isEmpty()) {
+            hql.append(" and (lower(t.name) like :query or lower(t.description) like :query)");
+        }
+
+        Query<Long> query = sessionFactory.getCurrentSession().createQuery(hql.toString(), Long.class);
+        if (ward != null) {
+            query.setParameter("ward", ward);
+        }
+        if (searchQuery != null && !searchQuery.trim().isEmpty()) {
+            query.setParameter("query", "%" + searchQuery.trim().toLowerCase() + "%");
+        }
+        return query.uniqueResult();
+    }
+
+    @Override
     public List<TaskTemplate> getAllActiveTaskTemplates() throws DAOException {
         Query<TaskTemplate> query = sessionFactory.getCurrentSession()
                 .createQuery("from TaskTemplate t where t.active = true and t.voided = false " +

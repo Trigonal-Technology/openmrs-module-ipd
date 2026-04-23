@@ -38,6 +38,18 @@ public class TaskTemplateServiceImpl extends BaseOpenmrsService implements TaskT
 
     @Override
     @Transactional(readOnly = true)
+    public List<TaskTemplate> getTaskTemplates(Location ward, String searchQuery, int offset, int pageSize) {
+        return taskTemplateDAO.getTaskTemplates(ward, searchQuery, offset, pageSize);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long countTaskTemplates(Location ward, String searchQuery) {
+        return taskTemplateDAO.countTaskTemplates(ward, searchQuery);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<TaskTemplate> getAllActiveTaskTemplates() {
         return taskTemplateDAO.getAllActiveTaskTemplates();
     }

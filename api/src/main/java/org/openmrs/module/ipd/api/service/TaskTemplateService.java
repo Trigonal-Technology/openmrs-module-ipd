@@ -19,6 +19,12 @@ public interface TaskTemplateService extends OpenmrsService {
     List<TaskTemplate> getTaskTemplatesByWard(Location ward);
 
     @Authorized({ "Manage Task Templates", "Get Task Templates" })
+    List<TaskTemplate> getTaskTemplates(Location ward, String searchQuery, int offset, int pageSize);
+
+    @Authorized({ "Manage Task Templates", "Get Task Templates" })
+    long countTaskTemplates(Location ward, String searchQuery);
+
+    @Authorized({ "Manage Task Templates", "Get Task Templates" })
     List<TaskTemplate> getAllActiveTaskTemplates();
 
     @Authorized({ "Manage Task Templates", "Get Task Templates" })

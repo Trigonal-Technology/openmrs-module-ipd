@@ -74,6 +74,12 @@ public class TaskTemplateSchedule extends BaseChangeableOpenmrsData {
         }
 
         if (recurrenceType == RecurrenceType.WEEKLY) {
+            int interval = (recurrenceInterval == null || recurrenceInterval < 1) ? 1 : recurrenceInterval;
+            long weeksBetween = java.time.temporal.ChronoUnit.WEEKS.between(startDate.toLocalDate(), date);
+            if (weeksBetween < 0 || weeksBetween % interval != 0) {
+                return false;
+            }
+
             if (daysOfWeek == null || daysOfWeek.isEmpty()) {
                 return true; 
             }

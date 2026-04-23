@@ -16,6 +16,10 @@ public interface TaskTemplateDAO {
 
     List<TaskTemplate> getTaskTemplatesByWard(Location ward) throws DAOException;
 
+    List<TaskTemplate> getTaskTemplates(Location ward, String searchQuery, int offset, int pageSize) throws DAOException;
+
+    long countTaskTemplates(Location ward, String searchQuery) throws DAOException;
+
     List<TaskTemplate> getAllActiveTaskTemplates() throws DAOException;
 
     List<TaskTemplate> getGlobalTaskTemplates() throws DAOException;

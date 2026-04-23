@@ -10,7 +10,6 @@ import org.openmrs.api.context.Context;
 import org.openmrs.Patient;
 import org.openmrs.module.ipd.api.model.PatientTaskTemplate;
 import org.openmrs.module.ipd.api.model.RecurrenceType;
-import org.openmrs.module.ipd.api.model.Task;
 import org.openmrs.module.ipd.api.model.TaskTemplate;
 import org.openmrs.module.ipd.api.model.TaskTemplateSchedule;
 import org.openmrs.module.ipd.api.service.PatientTaskTemplateService;
@@ -30,13 +29,10 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
-import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.Min;
 import javax.validation.constraints.Pattern;
 import javax.validation.constraints.Size;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
@@ -137,22 +133,28 @@ public class TaskTemplateController extends BaseRestController {
 
     @RequestMapping(method = RequestMethod.GET)
     @ResponseBody
-    public ResponseEntity<Object> getTaskTemplates(@RequestParam(value = "wardUuid", required = false) String wardUuid) {
+    public ResponseEntity<Object> getTaskTemplates(
+            @RequestParam(value = "wardUuid", required = false) String wardUuid,
+            @RequestParam(value = "pageNumber", defaultValue = "1") @Min(1) Integer pageNumber,
+            @RequestParam(value = "pageSize", defaultValue = "20") @Min(1) Integer pageSize,
+            @RequestParam(value = "searchQuery", required = false) String searchQuery) {
         try {
             if (!hasPrivilege(PrivilegeConstants.GET_TASK_TEMPLATES)) {
                 return forbidden(PrivilegeConstants.GET_TASK_TEMPLATES);
             }
 
-            List<TaskTemplate> templates;
+            Location ward = null;
             if (StringUtils.isNotBlank(wardUuid)) {
-                Location ward = locationService.getLocationByUuid(wardUuid);
+                ward = locationService.getLocationByUuid(wardUuid);
                 if (ward == null) {
                     return new ResponseEntity<>(errorPayload("Invalid wardUuid"), BAD_REQUEST);
                 }
-                templates = taskTemplateService.getTaskTemplatesByWard(ward);
-            } else {
-                templates = taskTemplateService.getAllActiveTaskTemplates();
             }
+
+            String normalizedSearchQuery = StringUtils.trimToNull(searchQuery);
+            int offset = (pageNumber - 1) * pageSize;
+            List<TaskTemplate> templates = taskTemplateService.getTaskTemplates(ward, normalizedSearchQuery, offset, pageSize);
+            long totalCount = taskTemplateService.countTaskTemplates(ward, normalizedSearchQuery);
 
             List<TaskTemplateResponse> results = templates.stream()
                     .map(t -> TaskTemplateResponse.from(t, getScheduleForTemplate(t)))
@@ -160,9 +162,94 @@ public class TaskTemplateController extends BaseRestController {
             
             SimpleObject response = new SimpleObject();
             response.put("results", results);
+            response.put("pageNumber", pageNumber);
+            response.put("pageSize", pageSize);
+            response.put("totalCount", totalCount);
+            response.put("totalPages", pageSize == 0 ? 0 : (int) Math.ceil((double) totalCount / pageSize));
             return new ResponseEntity<>(response, OK);
         } catch (Exception e) {
             log.error("Error while listing task templates", e);
+            return new ResponseEntity<>(errorPayload(e.getMessage()), BAD_REQUEST);
+        }
+    }
+
+    @RequestMapping(value = "/{templateUuid}", method = RequestMethod.PUT)
+    @ResponseBody
+    public ResponseEntity<Object> updateTaskTemplate(
+            @PathVariable("templateUuid")
+            @Pattern(regexp = "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$", message = "Invalid UUID format")
+            String templateUuid,
+            @Valid @RequestBody TaskTemplateRequest request) {
+        try {
+            if (!hasPrivilege(PrivilegeConstants.MANAGE_TASK_TEMPLATES)) {
+                return forbidden(PrivilegeConstants.MANAGE_TASK_TEMPLATES);
+            }
+
+            TaskTemplate template = taskTemplateService.getTaskTemplateByUuid(templateUuid);
+            if (template == null) {
+                return new ResponseEntity<>(errorPayload("Task template not found"), NOT_FOUND);
+            }
+
+            request.sanitize();
+
+            template.setName(request.getName());
+            template.setDescription(StringUtils.trimToNull(request.getDescription()));
+
+            if (StringUtils.isNotBlank(request.getTaskTypeUuid())) {
+                Concept taskType = conceptService.getConceptByUuid(request.getTaskTypeUuid());
+                if (taskType == null) {
+                    return new ResponseEntity<>(errorPayload("Invalid taskTypeUuid"), BAD_REQUEST);
+                }
+                template.setTaskType(taskType);
+            }
+
+            if (StringUtils.isNotBlank(request.getWardUuid())) {
+                Location ward = locationService.getLocationByUuid(request.getWardUuid());
+                if (ward == null) {
+                    return new ResponseEntity<>(errorPayload("Invalid wardUuid"), BAD_REQUEST);
+                }
+                template.setWard(ward);
+            } else {
+                template.setWard(null);
+            }
+
+            if (request.getPriority() != null) {
+                template.setPriority(request.getPriority());
+            }
+
+            template.setEstimatedDurationMinutes(request.getEstimatedDurationMinutes());
+
+            if (StringUtils.isNotBlank(request.getDefaultAssigneeRoleUuid())) {
+                Concept role = conceptService.getConceptByUuid(request.getDefaultAssigneeRoleUuid());
+                if (role == null) {
+                    return new ResponseEntity<>(errorPayload("Invalid defaultAssigneeRoleUuid"), BAD_REQUEST);
+                }
+                template.setDefaultAssigneeRole(role);
+            } else {
+                template.setDefaultAssigneeRole(null);
+            }
+
+            template.setActive(request.isActive());
+            template.setDateChanged(new Date());
+            template.setChangedBy(Context.getAuthenticatedUser());
+            TaskTemplate savedTemplate = taskTemplateService.saveTaskTemplate(template);
+
+            TaskTemplateSchedule schedule = getScheduleForTemplate(savedTemplate);
+            if (request.getRecurrence() != null) {
+                if (schedule == null) {
+                    schedule = createScheduleFromRequest(savedTemplate, request.getRecurrence());
+                    if (schedule != null) {
+                        taskTemplateScheduleService.saveTaskTemplateSchedule(schedule);
+                    }
+                } else {
+                    updateScheduleFromRequest(schedule, request.getRecurrence());
+                    taskTemplateScheduleService.saveTaskTemplateSchedule(schedule);
+                }
+            }
+
+            return new ResponseEntity<>(TaskTemplateResponse.from(savedTemplate, getScheduleForTemplate(savedTemplate)), OK);
+        } catch (Exception e) {
+            log.error("Error while updating task template", e);
             return new ResponseEntity<>(errorPayload(e.getMessage()), BAD_REQUEST);
         }
     }
@@ -327,19 +414,7 @@ public class TaskTemplateController extends BaseRestController {
         try {
             TaskTemplateSchedule schedule = new TaskTemplateSchedule();
             schedule.setTemplate(template);
-            schedule.setRecurrenceType(RecurrenceType.valueOf(recurrence.getType()));
-            schedule.setRecurrenceInterval(recurrence.getInterval() != null ? recurrence.getInterval() : 1);
-            schedule.setStartDate(LocalDateTime.parse(recurrence.getStartDate() != null ? recurrence.getStartDate() : LocalDateTime.now().toString()));
-            if (recurrence.getEndDate() != null) {
-                schedule.setEndDate(LocalDateTime.parse(recurrence.getEndDate()));
-            }
-            if (recurrence.getActiveTimes() != null && recurrence.getActiveTimes().length > 0) {
-                schedule.setActiveTimes(String.join(",", recurrence.getActiveTimes()));
-            }
-            if (recurrence.getDaysOfWeek() != null && recurrence.getDaysOfWeek().length > 0) {
-                schedule.setDaysOfWeek(String.join(",", java.util.Arrays.stream(recurrence.getDaysOfWeek())
-                    .map(String::valueOf).collect(java.util.stream.Collectors.toList())));
-            }
+            applyRecurrenceToSchedule(schedule, recurrence);
             schedule.setActive(true);
             schedule.setCreator(Context.getAuthenticatedUser());
             schedule.setDateCreated(new Date());
@@ -347,6 +422,44 @@ public class TaskTemplateController extends BaseRestController {
         } catch (Exception e) {
             log.error("Error creating schedule from request", e);
             return null;
+        }
+    }
+
+    private void updateScheduleFromRequest(TaskTemplateSchedule schedule, TaskTemplateRequest.RecurrenceRequest recurrence) {
+        applyRecurrenceToSchedule(schedule, recurrence);
+        schedule.setDateChanged(new Date());
+        schedule.setChangedBy(Context.getAuthenticatedUser());
+        if (!schedule.isActive()) {
+            schedule.setActive(true);
+        }
+    }
+
+    private void applyRecurrenceToSchedule(TaskTemplateSchedule schedule, TaskTemplateRequest.RecurrenceRequest recurrence) {
+        if (recurrence == null) {
+            return;
+        }
+        try {
+            schedule.setRecurrenceType(RecurrenceType.valueOf(recurrence.getType()));
+            schedule.setRecurrenceInterval(recurrence.getInterval() != null ? recurrence.getInterval() : 1);
+            schedule.setStartDate(LocalDateTime.parse(recurrence.getStartDate() != null ? recurrence.getStartDate() : LocalDateTime.now().toString()));
+            if (recurrence.getEndDate() != null) {
+                schedule.setEndDate(LocalDateTime.parse(recurrence.getEndDate()));
+            } else {
+                schedule.setEndDate(null);
+            }
+            if (recurrence.getActiveTimes() != null && recurrence.getActiveTimes().length > 0) {
+                schedule.setActiveTimes(String.join(",", recurrence.getActiveTimes()));
+            } else {
+                schedule.setActiveTimes(null);
+            }
+            if (recurrence.getDaysOfWeek() != null && recurrence.getDaysOfWeek().length > 0) {
+                schedule.setDaysOfWeek(String.join(",", java.util.Arrays.stream(recurrence.getDaysOfWeek())
+                    .map(String::valueOf).collect(java.util.stream.Collectors.toList())));
+            } else {
+                schedule.setDaysOfWeek(null);
+            }
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Invalid recurrence payload", e);
         }
     }
 
