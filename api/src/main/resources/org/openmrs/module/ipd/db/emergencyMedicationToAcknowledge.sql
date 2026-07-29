@@ -40,4 +40,16 @@ SELECT DISTINCT
  INNER JOIN person p ON p.person_id = ma.patient_id AND p.voided = 0
  WHERE cn.name = :witnessName
  AND pr.uuid = :providerUuid
- AND map.voided = 0{{LOCATION_FILTER}}
+  AND map.voided = 0
+  AND NOT EXISTS (
+    SELECT 1
+    FROM medication_administration_performer map2
+    INNER JOIN concept_name cn2
+      ON cn2.concept_id = map2.performer_function
+     AND cn2.concept_name_type = 'FULLY_SPECIFIED'
+     AND cn2.locale = :locale
+     AND cn2.voided = 0
+    WHERE map2.medication_administration_id = ma.medication_administration_id
+      AND cn2.name = 'Verifier'
+      AND map2.voided = 0
+  ){{LOCATION_FILTER}}
