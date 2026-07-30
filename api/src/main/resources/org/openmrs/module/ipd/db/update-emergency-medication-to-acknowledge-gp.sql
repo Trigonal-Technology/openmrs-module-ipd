@@ -1,5 +1,7 @@
-UPDATE global_property
-SET property_value = 'SELECT DISTINCT
+INSERT INTO global_property (property, property_value, description, uuid)
+VALUES (
+  'emrapi.sqlSearch.emergencyMedicationToAcknowledge',
+  'SELECT DISTINCT
  COALESCE(
   (SELECT pri.identifier FROM patient_identifier pri
    INNER JOIN patient_identifier_type pit ON pri.identifier_type = pit.patient_identifier_type_id AND pit.retired = 0
@@ -53,5 +55,10 @@ SET property_value = 'SELECT DISTINCT
    WHERE map2.medication_administration_id = ma.medication_administration_id
      AND cn2.name = \'Verifier\'
      AND map2.voided = 0
- ){{LOCATION_FILTER}}'
-WHERE property = 'emrapi.sqlSearch.emergencyMedicationToAcknowledge';
+ ){{LOCATION_FILTER}}',
+  'IPD emergencyMedicationsToAcknowledge SQL. Token {{LOCATION_FILTER}} optional (location filter). Params :providerUuid :locale :witnessName :locationUuid.',
+  UUID()
+)
+ON DUPLICATE KEY UPDATE
+  property_value = VALUES(property_value),
+  description = VALUES(description);
