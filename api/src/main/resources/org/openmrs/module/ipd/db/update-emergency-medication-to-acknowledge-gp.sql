@@ -1,13 +1,16 @@
-SELECT DISTINCT
+INSERT INTO global_property (property, property_value, description, uuid)
+VALUES (
+  'emrapi.sqlSearch.emergencyMedicationToAcknowledge',
+  'SELECT DISTINCT
  COALESCE(
   (SELECT pri.identifier FROM patient_identifier pri
    INNER JOIN patient_identifier_type pit ON pri.identifier_type = pit.patient_identifier_type_id AND pit.retired = 0
-   INNER JOIN global_property gp_ident ON gp_ident.property = 'bahmni.primaryIdentifierType' AND gp_ident.property_value = pit.uuid
+   INNER JOIN global_property gp_ident ON gp_ident.property = \'bahmni.primaryIdentifierType\' AND gp_ident.property_value = pit.uuid
    WHERE pri.patient_id = ma.patient_id AND pri.preferred = 1 AND pri.voided = 0 LIMIT 1),
   (SELECT pri2.identifier FROM patient_identifier pri2
    WHERE pri2.patient_id = ma.patient_id AND pri2.preferred = 1 AND pri2.voided = 0 LIMIT 1)
  ) AS identifier,
- CONCAT(pn.given_name, ' ', COALESCE(pn.family_name, '')) AS name,
+ CONCAT(pn.given_name, \' \', COALESCE(pn.family_name, \'\')) AS name,
  p.gender AS gender,
  p.uuid AS patient_uuid,
  p.birthdate AS date_of_birth,
@@ -19,7 +22,7 @@ SELECT DISTINCT
  cnr.name AS administered_route,
  map.uuid AS medication_administration_performer_uuid,
  pr.uuid AS witness_provider_uuid,
- CONCAT_WS(' ', ppn.given_name, NULLIF(TRIM(ppn.family_name), '')) AS witness_provider_display,
+ CONCAT_WS(\' \', ppn.given_name, NULLIF(TRIM(ppn.family_name), \'\')) AS witness_provider_display,
  v.uuid AS visit_uuid
  FROM medication_administration_performer map
  INNER JOIN provider pr ON pr.provider_id = map.actor_id AND pr.retired = 0
@@ -31,25 +34,31 @@ SELECT DISTINCT
  INNER JOIN ipd_schedule schedule ON schedule.schedule_id = slot.schedule_id AND schedule.voided = 0
  INNER JOIN visit v ON v.visit_id = schedule.visit_id AND v.voided = 0
  INNER JOIN concept_name cn ON cn.concept_id = map.performer_function
-  AND cn.concept_name_type = 'FULLY_SPECIFIED' AND cn.locale = :locale AND cn.voided = 0
+  AND cn.concept_name_type = \'FULLY_SPECIFIED\' AND cn.locale = :locale AND cn.voided = 0
  LEFT JOIN concept_name cnd ON cnd.concept_id = ma.dose_units
-  AND cnd.concept_name_type = 'FULLY_SPECIFIED' AND cnd.locale = :locale AND cnd.voided = 0
+  AND cnd.concept_name_type = \'FULLY_SPECIFIED\' AND cnd.locale = :locale AND cnd.voided = 0
  LEFT JOIN concept_name cnr ON cnr.concept_id = ma.route
-  AND cnr.concept_name_type = 'FULLY_SPECIFIED' AND cnr.locale = :locale AND cnr.voided = 0
+  AND cnr.concept_name_type = \'FULLY_SPECIFIED\' AND cnr.locale = :locale AND cnr.voided = 0
  INNER JOIN person_name pn ON ma.patient_id = pn.person_id AND pn.voided = 0 AND pn.preferred = 1
  INNER JOIN person p ON p.person_id = ma.patient_id AND p.voided = 0
  WHERE cn.name = :witnessName
  AND pr.uuid = :providerUuid
-  AND map.voided = 0
-  AND NOT EXISTS (
-    SELECT 1
-    FROM medication_administration_performer map2
-    INNER JOIN concept_name cn2
-      ON cn2.concept_id = map2.performer_function
-     AND cn2.concept_name_type = 'FULLY_SPECIFIED'
-     AND cn2.locale = :locale
-     AND cn2.voided = 0
-    WHERE map2.medication_administration_id = ma.medication_administration_id
-      AND cn2.name = 'Verifier'
-      AND map2.voided = 0
-  ){{LOCATION_FILTER}}
+ AND map.voided = 0
+ AND NOT EXISTS (
+   SELECT 1
+   FROM medication_administration_performer map2
+   INNER JOIN concept_name cn2
+     ON cn2.concept_id = map2.performer_function
+    AND cn2.concept_name_type = \'FULLY_SPECIFIED\'
+    AND cn2.locale = :locale
+    AND cn2.voided = 0
+   WHERE map2.medication_administration_id = ma.medication_administration_id
+     AND cn2.name = \'Verifier\'
+     AND map2.voided = 0
+ ){{LOCATION_FILTER}}',
+  'IPD emergencyMedicationsToAcknowledge SQL. Token {{LOCATION_FILTER}} optional (location filter). Params :providerUuid :locale :witnessName :locationUuid.',
+  UUID()
+)
+ON DUPLICATE KEY UPDATE
+  property_value = VALUES(property_value),
+  description = VALUES(description);

@@ -826,6 +826,13 @@
                  relativeToChangelogFile="false" splitStatements="true" stripComments="false" endDelimiter=";"/>
     </changeSet>
 
+    <changeSet id="update-emergency-medication-ack-gp-not-exists-20260729" author="nidan">
+        <comment>Update emrapi.sqlSearch.emergencyMedicationToAcknowledge GP to include NOT EXISTS Verifier anti-join</comment>
+        <sqlFile path="org/openmrs/module/ipd/db/update-emergency-medication-to-acknowledge-gp.sql"
+                 relativeToChangelogFile="false" splitStatements="false" stripComments="false"/>
+    </changeSet>
+
+
     <!-- ===================================================================
          NURSING TASK MANAGEMENT - Phase 1: Core Tables
          =================================================================== -->
